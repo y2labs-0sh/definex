@@ -1,0 +1,32 @@
+[features]
+default = ['std']
+std = [
+    'sp-core/std',
+    'sp-runtime/std',
+]
+
+[package]
+authors = ['Parity Technologies <admin@parity.io>']
+edition = '2018'
+license = 'GPL-3.0'
+name = 'node-primitives'
+version = '2.0.0'
+[dependencies.sp-core]
+default-features = false
+git = 'https://github.com/paritytech/substrate.git'
+rev = '3bc3bb6b385f275e482935f82ae4b8ab5c0e00e8'
+version = '2.0.0'
+
+[dependencies.sp-runtime]
+default-features = false
+git = 'https://github.com/paritytech/substrate.git'
+rev = '3bc3bb6b385f275e482935f82ae4b8ab5c0e00e8'
+version = '2.0.0'
+
+[dev-dependencies]
+pretty_assertions = '0.6.1'
+
+[dev-dependencies.sp-serializer]
+git = 'https://github.com/paritytech/substrate.git'
+rev = '3bc3bb6b385f275e482935f82ae4b8ab5c0e00e8'
+version = '2.0.0'

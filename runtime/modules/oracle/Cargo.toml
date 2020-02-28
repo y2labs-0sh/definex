@@ -1,0 +1,35 @@
+[package]
+name = "oracle"
+version = "2.0.0"
+authors = ["Definex Team"]
+edition = "2018"
+
+[dependencies]
+serde = { version = "1.0", optional = true, features = ["derive"] }
+safe-mix = { version = "1.0", default-features = false }
+codec = { package = "parity-scale-codec", version = "1.0.0", default-features = false, features = ["derive"] }
+
+rstd = { package = "sp-std", rev = "3bc3bb6b385f275e482935f82ae4b8ab5c0e00e8", git = "https://github.com/paritytech/substrate", default_features = false }
+runtime-io = { package = "sp-io", rev = "3bc3bb6b385f275e482935f82ae4b8ab5c0e00e8", git = "https://github.com/paritytech/substrate", default_features = false }
+support = { package = "frame-support", rev = "3bc3bb6b385f275e482935f82ae4b8ab5c0e00e8", git = "https://github.com/paritytech/substrate", default_features = false }
+primitives = { package = "sp-core", rev = "3bc3bb6b385f275e482935f82ae4b8ab5c0e00e8", git = "https://github.com/paritytech/substrate", default_features = false }
+balances = { package = "pallet-balances", rev = "3bc3bb6b385f275e482935f82ae4b8ab5c0e00e8", git = "https://github.com/paritytech/substrate", default_features = false }
+system = { package = "frame-system", rev = "3bc3bb6b385f275e482935f82ae4b8ab5c0e00e8", git = "https://github.com/paritytech/substrate", default_features = false }
+timestamp = { package = "pallet-timestamp", rev = "3bc3bb6b385f275e482935f82ae4b8ab5c0e00e8", git = "https://github.com/paritytech/substrate", default_features = false }
+sp-runtime = { package = "sp-runtime", rev = "3bc3bb6b385f275e482935f82ae4b8ab5c0e00e8", git = "https://github.com/paritytech/substrate", default_features = false }
+
+[features]
+default = ["std"]
+std = [
+	"serde",
+	"codec/std",
+	"rstd/std",
+	"runtime-io/std",
+	"support/std",
+	"balances/std",
+	"primitives/std",
+	"sp-runtime/std",
+	"system/std",
+	"timestamp/std",
+	"safe-mix/std",
+]
