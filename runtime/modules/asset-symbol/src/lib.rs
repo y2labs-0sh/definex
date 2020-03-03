@@ -52,6 +52,18 @@ decl_module! {
             let update_permission = pallet_generic_asset::PermissionType::Update;
             let can_update = pallet_generic_asset::Module::<T>::check_permission(&asset_id, &who, &update_permission);
             debug::info!("{}", can_update);
+            ensure!(can_update, Error::<T>::NoNamePermission);
+
+            if <Symbol<T>>::contains_key(&asset_id) {
+                <Symbol<T>>::mutate(&asset_id, |v| {
+                    *v = symbol;
+                });
+                Self::deposit_event(RawEvent::SymbolUpdated(asset_id));
+            } else {
+                <Symbol<T>>::insert(&asset_id, symbol);
+                Self::deposit_event(RawEvent::SymbolCreated(asset_id));
+            }
+
             Ok(())
         }
     }
@@ -62,6 +74,7 @@ decl_event! {
         AssetId = <T as pallet_generic_asset::Trait>::AssetId
     {
         SymbolCreated(AssetId),
+        SymbolUpdated(AssetId),
     }
 }
 
