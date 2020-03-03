@@ -1,0 +1,58 @@
+[package]
+name = "asset-symbol"
+version = "0.1.0"
+authors = ["Definex Team"]
+edition = "2018"
+
+[features]
+default = ["std"]
+std = [
+    "serde/std",
+    "codec/std",
+    "support/std",
+    "system/std",
+    "sp-runtime/std",
+    "sp-std/std",
+    "sp-core/std",
+    "pallet-generic-asset/std",
+]
+
+[dependencies]
+serde = { version = "1.0", optional = true }
+codec = { default-features = false, features = ["derive"], package = "parity-scale-codec", version = "1.0.0" }
+
+[dependencies.support]
+default_features = false
+git = "https://github.com/paritytech/substrate.git"
+package = "frame-support"
+rev = "3bc3bb6b385f275e482935f82ae4b8ab5c0e00e8"
+
+[dependencies.system]
+default_features = false
+git = "https://github.com/paritytech/substrate.git"
+package = "frame-system"
+rev = "3bc3bb6b385f275e482935f82ae4b8ab5c0e00e8"
+
+[dependencies.sp-runtime]
+default_features = false
+git = "https://github.com/paritytech/substrate.git"
+package = "sp-runtime"
+rev = "3bc3bb6b385f275e482935f82ae4b8ab5c0e00e8"
+
+[dependencies.pallet-generic-asset]
+default_features = false
+git = "https://github.com/paritytech/substrate.git"
+package = "pallet-generic-asset"
+rev = "3bc3bb6b385f275e482935f82ae4b8ab5c0e00e8"
+
+[dependencies.sp-std]
+default_features = false
+git = "https://github.com/paritytech/substrate.git"
+package = "sp-std"
+rev = "3bc3bb6b385f275e482935f82ae4b8ab5c0e00e8"
+
+[dependencies.sp-core]
+default_features = false
+git = "https://github.com/paritytech/substrate.git"
+package = "sp-core"
+rev = "3bc3bb6b385f275e482935f82ae4b8ab5c0e00e8"
