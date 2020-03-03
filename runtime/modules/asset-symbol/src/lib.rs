@@ -25,11 +25,8 @@ use support::{
 #[allow(unused_imports)]
 use system::{ensure_none, ensure_root, ensure_signed};
 
-type AssetId<T> = <<T as Trait>::Asset as pallet_generic_asset::Trait>::AssetId;
-
-pub trait Trait: system::Trait {
+pub trait Trait: system::Trait + pallet_generic_asset::Trait {
     type Event: From<Event<Self>> + Into<<Self as system::Trait>::Event>;
-    type Asset: pallet_generic_asset::Trait;
 }
 
 decl_error! {
@@ -40,7 +37,7 @@ decl_error! {
 
 decl_storage! {
     trait Store for Module<T: Trait> as AssetSymbol {
-        pub Symbol get(symbol) : map hasher(blake2_256) AssetId<T> => Vec<u8>;
+        pub Symbol get(symbol) : map hasher(blake2_256) T::AssetId => Vec<u8>;
     }
 }
 
@@ -50,11 +47,10 @@ decl_module! {
 
         fn deposit_event() = default;
 
-        pub fn set_name(origin, asset_id: AssetId<T>, symbol: Vec<u8>) -> DispatchResult {
+        pub fn set_name(origin, asset_id: T::AssetId, symbol: Vec<u8>) -> DispatchResult {
             let who = ensure_signed(origin)?;
             let update_permission = pallet_generic_asset::PermissionType::Update;
-            // let can_update = T::Asset::check_permission(&asset_id, &who, &update_permission);
-            let can_update = pallet_generic_asset::Module::<T::Asset>::check_permission(&asset_id, &who, &update_permission);
+            let can_update = pallet_generic_asset::Module::<T>::check_permission(&asset_id, &who, &update_permission);
             debug::info!("{}", can_update);
             Ok(())
         }
@@ -63,7 +59,7 @@ decl_module! {
 
 decl_event! {
     pub enum Event<T> where
-        AssetId = AssetId<T>
+        AssetId = <T as pallet_generic_asset::Trait>::AssetId
     {
         SymbolCreated(AssetId),
     }
