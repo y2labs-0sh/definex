@@ -50,6 +50,7 @@ pub const LTV_SCALE: u32 = 10000;
 pub enum LoanHealth {
     Well,
     ToBeLiquidated,
+    Overdue,
     Liquidated,
     Dead,
     Completed,
@@ -58,12 +59,6 @@ impl Default for LoanHealth {
     fn default() -> Self {
         Self::Well
     }
-}
-
-#[derive(Debug, Encode, Decode, Clone, Default, PartialEq, Eq)]
-pub struct CollateralLoan<B> {
-    pub collateral_amount: B,
-    pub loan_amount: B,
 }
 
 #[derive(Debug, Encode, Decode, Clone, PartialEq, Eq)]
@@ -198,7 +193,7 @@ decl_storage! {
         pub Loans get(loans) : linked_map hasher(blake2_256) LoanId => Loan<T::AssetId, T::Balance, T::BlockNumber, T::AccountId>;
         pub LoanIdsByAccountId get(loan_ids_by_account_id) : map hasher(blake2_256) T::AccountId => Vec<LoanId>;
         pub AliveLoanIdsByAccountId get(alive_loan_ids_by_account_id) : map hasher(blake2_256) T::AccountId => Vec<LoanId>;
-        pub AccountIdsWithLoans get(account_ids_with_loans) : Vec<T::AccountId>;
+        pub AccountIdsWithLiveLoans get(account_ids_with_loans) : Vec<T::AccountId>;
     }
 }
 
@@ -237,7 +232,50 @@ decl_module! {
         fn on_initialize(_height: T::BlockNumber) {
         }
 
-        fn on_finalize(_height: T::BlockNumber) {
+        fn on_finalize(block_number: T::BlockNumber) {
+            if (block_number % 2.into()).is_zero() && !((block_number + 1.into()) % 5.into()).is_zero() {
+                // check alive borrows
+                let mut new_alives: Vec<BorrowId> = Vec::new();
+                AliveBorrowIds::take().into_iter().for_each(|borrow_id| {
+                    let borrow = <Borrows<T>>::get(borrow_id);
+                    if borrow.dead_after.is_some() && borrow.dead_after.unwrap() <= block_number {
+                        <Borrows<T>>::mutate(borrow_id, |v| {
+                            v.status = BorrowStatus::Dead;
+                        });
+                        Self::deposit_event(RawEvent::BorrowDied(borrow_id.clone()));
+                    } else {
+                        new_alives.push(borrow_id.clone());
+                    }
+                });
+                AliveBorrowIds::put(new_alives);
+            }
+
+            if ((block_number + 1.into()) % 5.into()).is_zero()  {
+                // check alive loans
+                let account_ids = <AccountIdsWithLiveLoans<T>>::get();
+                for account_id in account_ids {
+                    let loan_ids = <AliveLoanIdsByAccountId<T>>::get(account_id);
+                    for loan_id in loan_ids {
+                        let mut loan = <Loans<T>>::get(&loan_id);
+                        let trading_pair_prices =
+                            Self::fetch_trading_pair_prices(loan.loan_asset_id, loan.collateral_asset_id);
+                        if trading_pair_prices.is_none() {
+                            continue;
+                        } else {
+                            let trading_pair_prices = trading_pair_prices.unwrap();
+                            if Self::ltv_meet_liquidation(&trading_pair_prices, loan.loan_balance, loan.collateral_balance) {
+                                loan.status = LoanHealth::ToBeLiquidated;
+                                <Loans<T>>::insert(&loan_id, loan);
+                                Self::deposit_event(RawEvent::LoanToBeLiquidated(loan_id.clone()));
+                            } else if block_number > loan.due {
+                                loan.status = LoanHealth::Overdue;
+                                <Loans<T>>::insert(&loan_id, loan);
+                                Self::deposit_event(RawEvent::LoanOverdue(loan_id.clone()));
+                            }
+                        }
+                    }
+                }
+            }
         }
 
         #[weight = SimpleDispatchInfo::MaxNormal]
@@ -344,6 +382,15 @@ decl_event!(
         LoanLiquidated(LoanId),
         LoanRepaid(LoanId),
         CollateralAdded(BorrowId),
+
+        // issue when the current block number is greater than the dead_after of a borrow
+        BorrowDied(BorrowId),
+
+        // issue when the current block number is greater than the due of a loan
+        LoanOverdue(LoanId),
+
+        // issue when status of a loan changed from LoanHealth::Well to LoanHealth::ToBeLiquidated
+        LoanToBeLiquidated(LoanId),
     }
 );
 
@@ -680,9 +727,9 @@ impl<T: Trait> Module<T> {
                 <LoanIdsByAccountId<T>>::append_or_insert(&loaner, vec![loan_id]);
                 <AliveLoanIdsByAccountId<T>>::append_or_insert(&loaner, vec![loan_id]);
 
-                let lenders = <AccountIdsWithLoans<T>>::get();
+                let lenders = <AccountIdsWithLiveLoans<T>>::get();
                 if !lenders.contains(&loaner) {
-                    <AccountIdsWithLoans<T>>::append_or_put(vec![loaner.clone()]);
+                    <AccountIdsWithLiveLoans<T>>::append_or_put(vec![loaner.clone()]);
                 }
 
                 // unreserve the locked balance
@@ -907,7 +954,7 @@ impl<T: Trait> Module<T> {
                 .collect::<Vec<_>>();
         });
         if <AliveLoanIdsByAccountId<T>>::get(&loan.loaner_id).len() == 0 {
-            <AccountIdsWithLoans<T>>::mutate(|v| {
+            <AccountIdsWithLiveLoans<T>>::mutate(|v| {
                 *v = v
                     .clone()
                     .into_iter()
@@ -940,7 +987,7 @@ impl<T: Trait> Module<T> {
                 .collect::<Vec<_>>();
         });
         if <AliveLoanIdsByAccountId<T>>::get(&loan.loaner_id).len() == 0 {
-            <AccountIdsWithLoans<T>>::mutate(|v| {
+            <AccountIdsWithLiveLoans<T>>::mutate(|v| {
                 *v = v
                     .clone()
                     .into_iter()
