@@ -1,5 +1,5 @@
 [package]
-name = "assets"
+name = "ls-biding"
 version = "0.1.0"
 authors = ["Definex Team"]
 edition = "2018"
@@ -9,22 +9,33 @@ default = ["std"]
 std = [
     "serde",
     "codec/std",
+    "sp-std/std",
     "support/std",
     "system/std",
     "sp-runtime/std",
-    "runtime-io/std",
-    "rstd/std",
+    "sp-core/std",
+    "sp-io/std",
+    "timestamp/std",
+    "generic-asset/std",
+    "new-oracle/std",
 ]
 
+[dependencies.sp-std]
+default-features = false
+package = "sp-std"
+git = "https://github.com/paritytech/substrate.git"
+rev = "3bc3bb6b385f275e482935f82ae4b8ab5c0e00e8"
+
 [dependencies.serde]
-version = "1.0"
+version = "1.0.104"
 optional = true
+features = [ "derive" ]
 
 [dependencies.codec]
 default-features = false
 features = ["derive"]
 package = "parity-scale-codec"
-version = "1.2.0"
+version = '1.0.6'
 
 [dependencies.support]
 default_features = false
@@ -41,9 +52,10 @@ rev = "3bc3bb6b385f275e482935f82ae4b8ab5c0e00e8"
 [dependencies.sp-runtime]
 default_features = false
 git = "https://github.com/paritytech/substrate.git"
+package = "sp-runtime"
 rev = "3bc3bb6b385f275e482935f82ae4b8ab5c0e00e8"
 
-[dependencies.runtime-io]
+[dependencies.sp-io]
 default_features = false
 git = "https://github.com/paritytech/substrate.git"
 package = "sp-io"
@@ -51,38 +63,25 @@ rev = "3bc3bb6b385f275e482935f82ae4b8ab5c0e00e8"
 
 [dependencies.generic-asset]
 default_features = false
-git = "https://github.com/paritytech/substrate.git"
-package = "pallet-generic-asset"
-rev = "3bc3bb6b385f275e482935f82ae4b8ab5c0e00e8"
+path = "../generic-asset"
 
-[dependencies.sudo]
+[dependencies.new-oracle]
+default_features = false
+path = "../new-oracle"
+
+[dependencies.timestamp]
 default_features = false
 git = "https://github.com/paritytech/substrate.git"
-package = "pallet-sudo"
+package = "pallet-timestamp"
 rev = "3bc3bb6b385f275e482935f82ae4b8ab5c0e00e8"
 
-[dependencies.rstd]
+[dependencies.sp-core]
 default_features = false
-git = "https://github.com/paritytech/substrate.git"
-package = "sp-std"
-rev = "3bc3bb6b385f275e482935f82ae4b8ab5c0e00e8"
-
-[dev-dependencies.primitives]
 git = "https://github.com/paritytech/substrate.git"
 package = "sp-core"
 rev = "3bc3bb6b385f275e482935f82ae4b8ab5c0e00e8"
 
-[dev-dependencies.generic-asset]
-git = "https://github.com/paritytech/substrate.git"
-package = "pallet-generic-asset"
-rev = "3bc3bb6b385f275e482935f82ae4b8ab5c0e00e8"
-
-[dev-dependencies.sudo]
-git = "https://github.com/paritytech/substrate.git"
-package = "pallet-sudo"
-rev = "3bc3bb6b385f275e482935f82ae4b8ab5c0e00e8"
-
-[dev-dependencies.balances]
-git = "https://github.com/paritytech/substrate.git"
-package = "pallet-balances"
-rev = "3bc3bb6b385f275e482935f82ae4b8ab5c0e00e8"
+[dependencies.node-primitives]
+path = "../../../primitives"
+default_features = false
+package = "node-primitives"

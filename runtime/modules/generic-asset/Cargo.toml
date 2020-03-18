@@ -1,0 +1,37 @@
+[package]
+name = "generic-asset"
+version = "1.0.0"
+authors = [""]
+edition = "2018"
+license = "GPL-3.0"
+homepage = "https://substrate.dev"
+repository = "https://github.com/paritytech/substrate/"
+description = "FRAME pallet for generic asset management"
+
+[dependencies]
+serde = { version = "1.0.101", optional = true }
+codec = { package = "parity-scale-codec", version = "1.2.0", default-features = false, features = ["derive"] }
+sp-std = { git = "https://github.com/paritytech/substrate.git", default-features = false, rev = "3bc3bb6b385f275e482935f82ae4b8ab5c0e00e8" }
+sp-runtime = { git = "https://github.com/paritytech/substrate.git", default-features = false, rev = "3bc3bb6b385f275e482935f82ae4b8ab5c0e00e8" }
+frame-support = { git = "https://github.com/paritytech/substrate.git", default-features = false, rev = "3bc3bb6b385f275e482935f82ae4b8ab5c0e00e8" }
+frame-system = { git = "https://github.com/paritytech/substrate.git", default-features = false, rev = "3bc3bb6b385f275e482935f82ae4b8ab5c0e00e8" }
+sp-core = { git = "https://github.com/paritytech/substrate.git", default-features = false, rev = "3bc3bb6b385f275e482935f82ae4b8ab5c0e00e8" }
+sp-io = { git = "https://github.com/paritytech/substrate.git", default-features = false, rev = "3bc3bb6b385f275e482935f82ae4b8ab5c0e00e8" }
+sudo = { git = "https://github.com/paritytech/substrate.git", default-features = false, rev = "3bc3bb6b385f275e482935f82ae4b8ab5c0e00e8", package = "pallet-sudo" }
+
+[dev-dependencies]
+sp-io ={ git = "https://github.com/paritytech/substrate.git", rev = "3bc3bb6b385f275e482935f82ae4b8ab5c0e00e8" }
+sp-core = { git = "https://github.com/paritytech/substrate.git", rev = "3bc3bb6b385f275e482935f82ae4b8ab5c0e00e8" }
+
+[features]
+default = ["std"]
+std =[
+	"serde/std",
+	"codec/std",
+	"sp-std/std",
+	"sp-runtime/std",
+	"frame-support/std",
+	"frame-system/std",
+  "sp-core/std",
+  "sudo/std",
+]

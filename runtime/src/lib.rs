@@ -68,6 +68,8 @@ use impls::{Author, CurrencyToVoteHandler, LinearWeightToFee, TargetedFeeAdjustm
 pub mod constants;
 use constants::{currency::*, time::*};
 
+pub use ls_biding::TradingPair;
+
 // Make the WASM binary available.
 #[cfg(feature = "std")]
 include!(concat!(env!("OUT_DIR"), "/wasm_binary.rs"));
@@ -94,6 +96,8 @@ pub fn native_version() -> NativeVersion {
         can_author_with: Default::default(),
     }
 }
+
+pub use new_oracle::PRICE_SCALE as ORACLE_PRICE_SCALE;
 
 type NegativeImbalance = <Balances as Currency<AccountId>>::NegativeImbalance;
 
@@ -615,87 +619,83 @@ impl pallet_vesting::Trait for Runtime {
     type BlockNumberToBalance = ConvertInto;
 }
 
-impl pallet_generic_asset::Trait for Runtime {
+impl generic_asset::Trait for Runtime {
     type Event = Event;
     type Balance = Balance;
     type AssetId = u32;
-}
-
-impl assets::Trait for Runtime {
-    type Event = Event;
-    type BeforeAssetTransfer = ();
-    type BeforeAssetMint = ();
-    type BeforeAssetCreate = ();
-    type BeforeAssetBurn = ();
-    type OnAssetTransfer = ();
-    type OnAssetMint = ();
-    type OnAssetCreate = ();
-    type OnAssetBurn = ();
 }
 
 impl bridge::Trait for Runtime {
     type Event = Event;
 }
 
-impl saving::Trait for Runtime {
-    type Event = Event;
-}
+// impl saving::Trait for Runtime {
+//     type Event = Event;
+// }
 
-impl loan::Trait for Runtime {
-    type Event = Event;
-}
-
-type OracleCollective = pallet_collective::Instance3;
-
-impl pallet_collective::Trait<OracleCollective> for Runtime {
-    type Origin = Origin;
-    type Proposal = Call;
-    type Event = Event;
-}
+// impl loan::Trait for Runtime {
+//     type Event = Event;
+// }
 
 parameter_types! {
-    pub const PricePrecision: u32 = price::PRICE_PRECISION;
+    pub const DaysInBlockNumber: BlockNumber = 1 * DAYS;
 }
-
-impl price::Trait for Runtime {
+impl ls_biding::Trait for Runtime {
     type Event = Event;
-    type OracleMixedIn = Oracle;
-    type ReportOrigin = pallet_collective::EnsureMember<AccountId, OracleCollective>;
-    type OnChange = Loan;
+    type Days = DaysInBlockNumber;
 }
 
-parameter_types! {
-    pub const OracleFee: Balance = 1 * DOLLARS;
-    pub const MissReportSlash: Balance = 1 * DOLLARS;
-    pub const MinStaking: Balance = 1000 * DOLLARS;
+// type OracleCollective = pallet_collective::Instance3;
 
-    pub const Count: u16 = 3;
+// impl pallet_collective::Trait<OracleCollective> for Runtime {
+//     type Origin = Origin;
+//     type Proposal = Call;
+//     type Event = Event;
+// }
 
-    pub const ReportInteval: BlockNumber = 10;
-    pub const ElectionEra: BlockNumber = 10;
-    pub const LockedDuration: BlockNumber = 1000;
-}
+// parameter_types! {
+//     pub const PricePrecision: u32 = price::PRICE_PRECISION;
+// }
 
-impl oracle::Trait for Runtime {
-    type Event = Event;
+// impl price::Trait for Runtime {
+//     type Event = Event;
+//     type OracleMixedIn = Oracle;
+//     type ReportOrigin = pallet_collective::EnsureMember<AccountId, OracleCollective>;
+//     type OnChange = Loan;
+// }
 
-    type Currency = Balances;
+// parameter_types! {
+//     pub const OracleFee: Balance = 1 * DOLLARS;
+//     pub const MissReportSlash: Balance = 1 * DOLLARS;
+//     pub const MinStaking: Balance = 1000 * DOLLARS;
 
-    type OracleFee = OracleFee;
-    type MissReportSlash = MissReportSlash;
-    type MinStaking = MinStaking;
+//     pub const Count: u16 = 3;
 
-    type MaliciousSlashOrigin =
-        pallet_collective::EnsureProportionMoreThan<_1, _2, AccountId, OracleCollective>;
+//     pub const ReportInteval: BlockNumber = 10;
+//     pub const ElectionEra: BlockNumber = 10;
+//     pub const LockedDuration: BlockNumber = 1000;
+// }
 
-    type Count = Count;
+// impl oracle::Trait for Runtime {
+//     type Event = Event;
 
-    type ReportInteval = ReportInteval;
-    type ElectionEra = ElectionEra;
-    type LockedDuration = LockedDuration;
+//     type Currency = Balances;
 
-    type ChangeMembers = OracleMembers;
-}
+//     type OracleFee = OracleFee;
+//     type MissReportSlash = MissReportSlash;
+//     type MinStaking = MinStaking;
+
+//     type MaliciousSlashOrigin =
+//         pallet_collective::EnsureProportionMoreThan<_1, _2, AccountId, OracleCollective>;
+
+//     type Count = Count;
+
+//     type ReportInteval = ReportInteval;
+//     type ElectionEra = ElectionEra;
+//     type LockedDuration = LockedDuration;
+
+//     type ChangeMembers = OracleMembers;
+// }
 
 // impl btc_bridge::Trait for Runtime {
 //     type Event = Event;
@@ -705,7 +705,7 @@ type SubmitOracleTransaction =
     TransactionSubmitter<new_oracle::crypto::Public, Runtime, UncheckedExtrinsic>;
 
 parameter_types! {
-    pub const AggregateInterval: BlockNumber = 3;
+    pub const AggregateInterval: BlockNumber = 5;
 }
 
 impl new_oracle::Trait for Runtime {
@@ -720,8 +720,8 @@ impl new_oracle::Trait for Runtime {
 construct_runtime!(
     pub enum Runtime where
 		    Block = Block,
-    NodeBlock = node_primitives::Block,
-    UncheckedExtrinsic = UncheckedExtrinsic
+        NodeBlock = node_primitives::Block,
+        UncheckedExtrinsic = UncheckedExtrinsic
 	  {
 		    System: frame_system::{Module, Call, Config, Storage, Event<T>},
 		    Utility: pallet_utility::{Module, Call, Storage, Event<T>},
@@ -751,16 +751,16 @@ construct_runtime!(
 		    Society: pallet_society::{Module, Call, Storage, Event<T>, Config<T>},
 		    Recovery: pallet_recovery::{Module, Call, Storage, Event<T>},
 		    Vesting: pallet_vesting::{Module, Call, Storage, Event<T>, Config<T>},
-        AssetsQuery: pallet_generic_asset::{Module, Storage, Event<T>, Config<T>},
-        Assets: assets::{Module, Call, Storage, Event<T>, Config<T>},
-        Saving: saving::{Module, Call, Storage, Event<T>, Config<T>},
-        Loan: loan::{Module, Call, Storage, Event<T>, Config<T>},
+        GenericAsset: generic_asset::{Module, Call, Storage, Event<T>, Config<T>},
+        // Saving: saving::{Module, Call, Storage, Event<T>, Config<T>},
+        // Loan: loan::{Module, Call, Storage, Event<T>, Config<T>},
+        LSBiding: ls_biding::{Module, Call, Storage, Event<T>, Config<T>},
         Bridge: bridge::{Module, Call, Storage, Event<T>, Config<T>},
-        Price: price::{Module, Call, Storage, Event<T>},
-        Oracle: oracle::{Module, Call, Storage, Event<T>},
-        OracleMembers: pallet_collective::<Instance3>::{Module, Call, Storage, Origin<T>, Event<T>},
+        // Price: price::{Module, Call, Storage, Event<T>},
+        // Oracle: oracle::{Module, Call, Storage, Event<T>},
+        // OracleMembers: pallet_collective::<Instance3>::{Module, Call, Storage, Origin<T>, Event<T>},
         // BTCBridge: btc_bridge::{Module, Call, Storage, Config<T>, Event<T>},
-        NewOracle: new_oracle::{Module, Call, Storage, Config, Event<T>, ValidateUnsigned},
+        NewOracle: new_oracle::{Module, Call, Storage, Config<T>, Event<T>, ValidateUnsigned},
 	  }
 );
 

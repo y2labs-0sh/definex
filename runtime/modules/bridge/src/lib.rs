@@ -3,9 +3,10 @@
 #[allow(unused_imports)]
 use codec::{Decode, Encode, Error as codecErr, HasCompact, Input, Output};
 use primitives::H256;
+use rstd::fmt::Debug;
 use rstd::prelude::*;
 use support::{
-    decl_event, decl_module, decl_storage, dispatch::DispatchResult, ensure,
+    debug, decl_event, decl_module, decl_storage, dispatch::DispatchResult, ensure,
     weights::SimpleDispatchInfo,
 };
 use system::{ensure_root, ensure_signed};
@@ -16,8 +17,8 @@ use serde::{Deserialize, Serialize};
 mod mock;
 mod tests;
 
-#[derive(Encode, Decode, PartialEq, Eq, Clone, Copy)]
-#[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
+#[derive(Encode, Decode, PartialEq, Eq, Clone, Copy, Debug)]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub enum BlackOrWhite {
     Black,
     White,
@@ -28,8 +29,8 @@ impl Default for BlackOrWhite {
     }
 }
 
-#[derive(Encode, Decode, PartialEq, Eq, Clone, Copy)]
-#[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
+#[derive(Encode, Decode, PartialEq, Eq, Clone, Copy, Debug)]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub enum Auth {
     All,
     Deposit,
@@ -56,7 +57,7 @@ pub struct Deposit<AccountId, Balance> {
     pub amount: Balance,
 }
 
-pub trait Trait: system::Trait + assets::Trait {
+pub trait Trait: system::Trait + generic_asset::Trait {
     type Event: From<Event<Self>> + Into<<Self as system::Trait>::Event>;
 }
 
@@ -132,7 +133,7 @@ decl_module! {
             let asset_id = Self::asset_id();
             ensure!(Self::has_auth(&author, Auth::Refund), "no refund auth");
             ensure!(Self::pending_withdraws(&who).contains(&amount), "pending withdraw not found");
-            <assets::Module<T>>::make_transfer_with_event(&asset_id, &Self::pending_withdraw_vault(), &who, amount)?;
+            <generic_asset::Module<T>>::make_transfer_with_event(&asset_id, &Self::pending_withdraw_vault(), &who, amount)?;
             Self::remove_from_pending_withdraws(who.clone(), amount);
             Self::deposit_event(RawEvent::Refund(who, amount));
             Ok(())
@@ -153,7 +154,7 @@ decl_module! {
         pub fn withdraw(origin, amount: T::Balance) -> DispatchResult {
             let who = ensure_signed(origin)?;
             let asset_id = Self::asset_id();
-            <assets::Module<T>>::make_transfer_with_event(&asset_id, &who, &Self::pending_withdraw_vault(), amount)?;
+            <generic_asset::Module<T>>::make_transfer_with_event(&asset_id, &who, &Self::pending_withdraw_vault(), amount)?;
             if <PendingWithdraws<T>>::contains_key(&who) {
                 <PendingWithdraws<T>>::mutate(&who, |v| {
                     v.push(amount);
@@ -232,11 +233,11 @@ impl<T: Trait> Module<T> {
             account_id: account_id.clone(),
         };
         <DepositHistory<T>>::insert(&tx_hash, dep);
-        <assets::Module<T>>::mint(
-            system::RawOrigin::Root.into(),
-            Self::asset_id(),
-            account_id.clone(),
-            amount,
+        <generic_asset::Module<T>>::mint_free(
+            &Self::asset_id(),
+            &<sudo::Module<T>>::key(),
+            &account_id,
+            &amount,
         )?;
         Self::deposit_event(RawEvent::Deposit(account_id.clone(), amount, tx_hash));
         Ok(())

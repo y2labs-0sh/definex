@@ -233,8 +233,8 @@ optional = true
 version = '2.0'
 
 [dependencies.serde]
+version = '1.0.104'
 optional = true
-version = '1.0.102'
 
 [dependencies.sp-api]
 default-features = false
@@ -318,6 +318,7 @@ default-features = false
 git = 'https://github.com/paritytech/substrate.git'
 rev = '3bc3bb6b385f275e482935f82ae4b8ab5c0e00e8'
 version = '2.0.0'
+
 [dev-dependencies.sp-io]
 git = 'https://github.com/paritytech/substrate.git'
 rev = '3bc3bb6b385f275e482935f82ae4b8ab5c0e00e8'
@@ -378,15 +379,10 @@ std = [
     'pallet-society/std',
     'pallet-recovery/std',
     'pallet-vesting/std',
-    'pallet-generic-asset/std',
-    'assets/std',
-    'saving/std',
-    'loan/std',
+    'generic-asset/std',
     'bridge/std',
-    'price/std',
-    'oracle/std',
-    'btc-bridge/std',
     'new-oracle/std',
+    'ls-biding/std',
 ]
 
 [package]
@@ -397,40 +393,18 @@ license = 'GPL-3.0'
 name = 'node-runtime'
 version = '2.0.0'
 
-[dependencies.pallet-generic-asset]
-git = 'https://github.com/paritytech/substrate.git'
-rev = '3bc3bb6b385f275e482935f82ae4b8ab5c0e00e8'
-version = '2.0.0'
+[dependencies.generic-asset]
 default-features = false
-
-[dependencies.assets]
-default-features = false
-path = "modules/assets"
-
-[dependencies.saving]
-default-features = false
-path = "modules/saving"
-
-[dependencies.loan]
-default-features = false
-path = "modules/loan"
+path = "modules/generic-asset"
 
 [dependencies.bridge]
 default-features = false
 path = "modules/bridge"
 
-[dependencies.price]
-default-features = false
-path = "modules/price"
-
-[dependencies.oracle]
-default-features = false
-path = "modules/oracle"
-
-[dependencies.btc-bridge]
-default-features = false
-path = "modules/btc-bridge"
-
 [dependencies.new-oracle]
 default-features = false
 path = "modules/new-oracle"
+
+[dependencies.ls-biding]
+default-features = false
+path = "modules/ls-biding"

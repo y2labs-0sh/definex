@@ -39,6 +39,7 @@ mod tests;
 
 pub type StrBytes = Vec<u8>;
 pub const KEY_TYPE: KeyTypeId = KeyTypeId(*b"orcl");
+pub const PRICE_SCALE: u64 = 10000;
 
 pub mod crypto {
     use super::KEY_TYPE;
@@ -68,9 +69,9 @@ pub trait Trait: timestamp::Trait + system::Trait {
 
 decl_storage! {
     trait Store for Module<T: Trait> as NewOracle {
-        pub CryptoPriceSources get(crypto_price_sources) config() : map hasher(blake2_256) StrBytes => Vec<(StrBytes, StrBytes, Vec<StrBytes>)>;
-        pub PriceCandidates get(price_candidates) : Vec<T::PriceInUSDT>;
-        pub CurrentPrice get(current_price) : T::PriceInUSDT;
+        pub CryptoPriceSources get(crypto_price_sources) config() : linked_map hasher(blake2_256) StrBytes => Vec<(StrBytes, StrBytes, Vec<StrBytes>)>;
+        pub PriceCandidates get(price_candidates) : linked_map hasher(blake2_256) StrBytes => Vec<T::PriceInUSDT>;
+        pub CurrentPrice get(current_price) config() : linked_map hasher(blake2_256) StrBytes => T::PriceInUSDT;
         pub NextAggregateAt get(next_aggregate_at) : T::BlockNumber;
     }
 }
@@ -79,18 +80,50 @@ decl_module! {
     pub struct Module<T: Trait> for enum Call where origin: T::Origin {
         fn deposit_event() = default;
 
-        pub fn stack_price_unsigned(origin, block_number: T::BlockNumber, price: T::PriceInUSDT) -> DispatchResult {
-            ensure_none(origin)?;
+        fn on_finalize(bn: T::BlockNumber) {
+            if (bn % T::AggregateInterval::get()).is_zero() {
+                for (k, _) in <PriceCandidates<T>>::enumerate() {
+                    let pc = <PriceCandidates<T>>::take(&k);
+                    let l = pc.len();
+                    let t: T::PriceInUSDT = pc.into_iter().fold(0.into(), |acc, x| acc + x);
+                    let mean = t / <T::PriceInUSDT as TryFrom<usize>>::try_from(l).ok().unwrap();
+                    if <CurrentPrice<T>>::contains_key(&k) {
+                        <CurrentPrice<T>>::mutate(&k, |v| {
+                            *v = mean;
+                        });
+                    } else {
+                        <CurrentPrice<T>>::insert(&k, mean);
+                    }
+                }
+                <NextAggregateAt<T>>::put(bn + T::AggregateInterval::get());
+            }
+        }
 
-            Self::stack_price(price)?;
+        pub fn add_source(origin, token: StrBytes, source_name: StrBytes, source_url: StrBytes, json_path: Vec<StrBytes>) -> DispatchResult {
+            ensure_root(origin)?;
+            if CryptoPriceSources::contains_key(&token) {
+                CryptoPriceSources::mutate(&token, |v| {
+                    v.push((source_name, source_url, json_path));
+                })
+            } else{
+                CryptoPriceSources::insert(&token, vec![(source_name, source_url, json_path)]);
+            }
 
             Ok(())
         }
 
-        pub fn stack_price_signed(origin, block_number: T::BlockNumber, price: T::PriceInUSDT) -> DispatchResult {
+        pub fn stack_price_unsigned(origin, block_number: T::BlockNumber, token: StrBytes, price: T::PriceInUSDT) -> DispatchResult {
+            ensure_none(origin)?;
+
+            Self::stack_price(block_number, token, price)?;
+
+            Ok(())
+        }
+
+        pub fn stack_price_signed(origin, block_number: T::BlockNumber, token: StrBytes, price: T::PriceInUSDT) -> DispatchResult {
             let who = ensure_signed(origin)?;
 
-            // Self::stack_price(price);
+            // Self::stack_price(block_number, token, price);
 
             Ok(())
         }
@@ -102,7 +135,9 @@ decl_module! {
             let rand_s = sp_io::offchain::random_seed();
             let r = u64::from_ne_bytes(sp_io::hashing::twox_64(&rand_s));
             debug::info!("{}", r);
-            let sources = CryptoPriceSources::get(b"BTC".to_vec());
+
+            let token = b"BTC".to_vec();
+            let sources = CryptoPriceSources::get(&token);
             let source = &sources[r as usize % sources.len()];
 
             match Self::fetch_json(&source.1) {
@@ -113,7 +148,7 @@ decl_module! {
                     let price_r = Self::parse_price(json_data, &source.2);
                     match price_r {
                         Ok(price) => {
-                            let call = Call::stack_price_unsigned(block_number, price);
+                            let call = Call::stack_price_unsigned(block_number, token, price);
                             match T::SubmitUnsignedTransaction::submit_unsigned(call) {
                                 Err(e) => {
                                     debug::error!("Fail to submit unsigned transaction for price: {:?}", e);
@@ -134,10 +169,18 @@ decl_module! {
 }
 
 impl<T: Trait> Module<T> {
-    fn stack_price(price: T::PriceInUSDT) -> Result<(), &'static str> {
+    pub fn is_token_known(token: &StrBytes) -> bool {
+        <CurrentPrice<T>>::contains_key(token)
+    }
+
+    fn stack_price(
+        _block_number: T::BlockNumber,
+        token: StrBytes,
+        price: T::PriceInUSDT,
+    ) -> Result<(), &'static str> {
         // check price
 
-        <PriceCandidates<T>>::mutate(|v| {
+        <PriceCandidates<T>>::mutate(&token, |v| {
             v.push(price);
         });
 
@@ -204,13 +247,16 @@ impl<T: Trait> Module<T> {
     /// parse_field can only parse number & &[u8]
     fn parse_field(json_data: &JsonValue) -> Result<u64, &'static str> {
         if let Some(p_f64) = json_data.get_number_f64() {
-            return Ok(((p_f64 * 10000.).round() as u64).try_into().ok().unwrap());
+            return Ok(((p_f64 * PRICE_SCALE as f64).round() as u64)
+                .try_into()
+                .ok()
+                .unwrap());
         } else if let Some(price_u8) = json_data.get_bytes() {
             let val_f64: f64 = core::str::from_utf8(&price_u8)
                 .map_err(|_| "parse_field: val_f64 convert to string error")?
                 .parse::<f64>()
                 .map_err(|_| "parse_field: val_u8 parsing to f64 error")?;
-            return Ok((val_f64 * 10000.).round() as u64);
+            return Ok((val_f64 * PRICE_SCALE as f64).round() as u64);
         }
         Err("unknown data")
     }
@@ -265,10 +311,10 @@ impl<T: Trait> support::unsigned::ValidateUnsigned for Module<T> {
 
     fn validate_unsigned(call: &Self::Call) -> TransactionValidity {
         match call {
-            Call::stack_price_unsigned(block, price) => Ok(ValidTransaction {
+            Call::stack_price_unsigned(block, token, price) => Ok(ValidTransaction {
                 priority: 0,
                 requires: vec![],
-                provides: vec![(block, price).encode()],
+                provides: vec![(block, token, price).encode()],
                 longevity: 3,
                 propagate: true,
             }),

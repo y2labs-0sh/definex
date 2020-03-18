@@ -272,7 +272,7 @@ version = '2.0.0'
 
 [dependencies.serde]
 features = ['derive']
-version = '1.0.102'
+version = '1.0.104'
 
 [dependencies.sp-authority-discovery]
 git = 'https://github.com/paritytech/substrate.git'
