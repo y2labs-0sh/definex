@@ -153,6 +153,7 @@ api.tx.lsBiding.repay(borrow_id:BorrowId)
         "asset_id": "AssetId",
         "amount": "Balance",
         "reasons": "WithdrawReasons"
-    }
+    },
+    "PriceInUSDT": "u64"
 }
 ```

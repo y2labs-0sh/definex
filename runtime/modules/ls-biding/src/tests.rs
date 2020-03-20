@@ -92,10 +92,6 @@ fn borrow_works() {
 #[test]
 fn ltv_meet_safty_works() {
     ExtBuilder::default().build().execute_with(|| {
-        let trading_pair = crate::TradingPair {
-            collateral: BTC,
-            borrow: USDT,
-        };
         let prices = LSBidingTest::fetch_trading_pair_prices(USDT, BTC);
         let borrow_amount =
             <<Test as generic_asset::Trait>::Balance as TryFrom<u64>>::try_from(10000_00000000)
@@ -127,6 +123,68 @@ fn expected_interest_works() {
             <<Test as generic_asset::Trait>::Balance as TryFrom<u64>>::try_from(20_00000000)
                 .ok()
                 .unwrap()
+        );
+    });
+}
+
+#[test]
+fn multi_borrows_error_works() {
+    let root: <Test as system::Trait>::AccountId = get_from_seed::<sr25519::Public>("Root");
+    let eve: <Test as system::Trait>::AccountId = get_from_seed::<sr25519::Public>("Eve");
+    let dave: <Test as system::Trait>::AccountId = get_from_seed::<sr25519::Public>("Dave");
+
+    ExtBuilder::default().build().execute_with(|| {
+        assert_ok!(GenericAssetTest::mint_free(
+            &BTC,
+            &root,
+            &eve,
+            &<<Test as generic_asset::Trait>::Balance as TryFrom<u64>>::try_from(1000_00000000)
+                .ok()
+                .unwrap(),
+        ));
+        assert_ok!(GenericAssetTest::mint_free(
+            &USDT,
+            &root,
+            &dave,
+            &<<Test as generic_asset::Trait>::Balance as TryFrom<u64>>::try_from(1000_00000000)
+                .ok()
+                .unwrap(),
+        ));
+
+        let trading_pair = crate::TradingPair {
+            collateral: BTC,
+            borrow: USDT,
+        };
+        let options = crate::BorrowOptions {
+            amount: <<Test as generic_asset::Trait>::Balance as TryFrom<u64>>::try_from(
+                100_00000000,
+            )
+            .ok()
+            .unwrap(),
+            terms: 10,
+            interest_rate: 20000,
+            warranty: Some(<Test as system::Trait>::BlockNumber::from(30u32)),
+        };
+
+        assert_ok!(LSBidingTest::create_borrow(
+            eve.clone(),
+            <<Test as generic_asset::Trait>::Balance as TryFrom<u64>>::try_from(100000000)
+                .ok()
+                .unwrap(),
+            trading_pair.clone(),
+            options.clone(),
+        ));
+
+        assert_noop!(
+            LSBidingTest::create_borrow(
+                eve,
+                <<Test as generic_asset::Trait>::Balance as TryFrom<u64>>::try_from(100000000)
+                    .ok()
+                    .unwrap(),
+                trading_pair,
+                options,
+            ),
+            Error::<Test>::MultipleAliveBorrows
         );
     });
 }
