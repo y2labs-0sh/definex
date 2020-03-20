@@ -240,50 +240,56 @@ decl_module! {
             }
         }
 
-        #[weight = SimpleDispatchInfo::MaxNormal]
+        #[weight = SimpleDispatchInfo::MaxOperational]
         pub fn pause(origin) -> DispatchResult {
             ensure_root(origin)?;
             Paused::mutate(|v| *v = true);
             Ok(())
         }
 
-        #[weight = SimpleDispatchInfo::MaxNormal]
+        #[weight = SimpleDispatchInfo::MaxOperational]
         pub fn resume(origin) -> DispatchResult {
             ensure_root(origin)?;
             Paused::mutate(|v| *v = false);
             Ok(())
         }
 
+        #[weight = SimpleDispatchInfo::MaxOperational]
         pub fn change_platform(origin, platform: T::AccountId) -> DispatchResult {
             ensure_root(origin)?;
             <Platform<T>>::put(platform);
             Ok(())
         }
 
+        #[weight = SimpleDispatchInfo::MaxOperational]
         pub fn change_money_pool(origin, pool: T::AccountId) -> DispatchResult {
             ensure_root(origin)?;
             <MoneyPool<T>>::put(pool);
             Ok(())
         }
 
+        #[weight = SimpleDispatchInfo::MaxOperational]
         pub fn change_safe_ltv(origin, ltv: u32) -> DispatchResult {
             ensure_root(origin)?;
             SafeLTV::put(ltv);
             Ok(())
         }
 
+        #[weight = SimpleDispatchInfo::MaxOperational]
         pub fn change_liquidate_ltv(origin, ltv: u32) -> DispatchResult {
             ensure_root(origin)?;
             LiquidateLTV::put(ltv);
             Ok(())
         }
 
+        #[weight = SimpleDispatchInfo::MaxOperational]
         pub fn change_min_borrow_terms(origin, t: u64) -> DispatchResult {
             ensure_root(origin)?;
             MinBorrowTerms::put(t);
             Ok(())
         }
 
+        #[weight = SimpleDispatchInfo::MaxOperational]
         pub fn change_min_borrow_interest_rate(origin, r: u64) -> DispatchResult {
             ensure_root(origin)?;
             MinBorrowInterestRate::put(r);
@@ -297,30 +303,35 @@ decl_module! {
             Self::create_borrow(who, collateral_balance, trading_pair, borrow_options)
         }
 
+        #[weight = SimpleDispatchInfo::FixedNormal(500_000)]
         pub fn unlist_borrow(origin, borrow_id: BorrowId) -> DispatchResult {
             ensure!(!Self::paused(), Error::<T>::Paused);
             let who = ensure_signed(origin)?;
             Self::remove_borrow(who, borrow_id)
         }
 
+        #[weight = SimpleDispatchInfo::FixedNormal(1_000_000)]
         pub fn lend(origin, borrow_id: BorrowId) -> DispatchResult {
             ensure!(!Self::paused(), Error::<T>::Paused);
             let who = ensure_signed(origin)?;
             Self::create_loan(who, borrow_id)
         }
 
+        #[weight = SimpleDispatchInfo::FixedNormal(1_000_000)]
         pub fn liquidate(origin, loan_id: LoanId) -> DispatchResult {
             ensure!(!Self::paused(), Error::<T>::Paused);
             let who = ensure_signed(origin)?;
-            Ok(())
+            Self::liquidate_loan(who, loan_id)
         }
 
-        pub fn add(origin, loan_id: LoanId, amount: T::Balance) -> DispatchResult {
+        #[weight = SimpleDispatchInfo::FixedNormal(500_000)]
+        pub fn add(origin, borrow_id: BorrowId, amount: T::Balance) -> DispatchResult {
             ensure!(!Self::paused(), Error::<T>::Paused);
             let who = ensure_signed(origin)?;
-            Self::add_collateral(who, loan_id, amount)
+            Self::add_collateral(who, borrow_id, amount)
         }
 
+        #[weight = SimpleDispatchInfo::FixedNormal(1_000_000)]
         pub fn repay(origin, borrow_id: BorrowId) -> DispatchResult {
             ensure!(!Self::paused(), Error::<T>::Paused);
             let who = ensure_signed(origin)?;
