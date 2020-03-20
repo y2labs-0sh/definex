@@ -11,3 +11,9 @@ Basically, there are 3 major roles:
     2. loaner: those who bring liquidity to the platform. they select the borrows that most profitable, and lend the money to the borrower. By doing this, they earn the negotiated interest.
 
     3. liquidator: those who keep monitoring if there is any loan with a ltv lower than the 'LTVLiquidate'. By doing this, they would be rewarded.
+
+## price if fed through offchain worker
+
+runtime/modules/new-oracle
+
+you can customize your crypto price sources by "add_source".
