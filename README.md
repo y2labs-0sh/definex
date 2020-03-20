@@ -17,3 +17,11 @@ Basically, there are 3 major roles:
 runtime/modules/new-oracle
 
 you can customize your crypto price sources by "add_source".
+
+## assets are based on runtime/modules/generic-asset
+
+this is a modified version of frame/pallet-generic-asset.
+
+we need every asset dynamically created can be reserved with a lock on the balance. but the default frame/pallet-generic-asset implementation doesn't support that.
+
+## we are still adding more test cases
