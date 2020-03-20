@@ -1,3 +1,12 @@
+//! This module is meant for Web3 grant.
+//! In this module, definex implemented a DeFi model which follows a 'maker-taker'.
+//! Basically, there are 3 major roles:
+//!     1. borrower: those who want to borrow money. they can publish their needs (collateral amount, borrow amount, how long they will repay, a specific interest rate, etc.) on the platform.
+//!     2. loaner: those who bring liquidity to the platform. they select the borrows that most profitable, and lend the money to the borrower. By doing this, they earn the negotiated interest.
+//!     3. liquidator: those who keep monitoring if there is any loan with a ltv lower than the 'LTVLiquidate'. By doing this, they would be rewarded.
+//!
+//!
+
 #![cfg_attr(not(feature = "std"), no_std)]
 
 #[allow(unused_imports)]
@@ -87,20 +96,6 @@ pub struct Loan<AssetId, Balance, BlockNumber, AccountId> {
     pub interest_rate: u64,
     pub liquidation_type: LiquidationType,
 }
-// impl<AccountId, Balance> Loan<AccountId, Balance, Moment>
-// where
-//     Balance: Encode
-//         + Decode
-//         + Parameter
-//         + Member
-//         + AtLeast32Bit
-//         + Default
-//         + Copy
-//         + MaybeSerializeDeserialize,
-//     Moment: Parameter + Default + AtLeast32Bit + Copy,
-//     AccountId: Parameter + Member + MaybeSerializeDeserialize + MaybeDisplay + Ord + Default,
-// {
-// }
 
 #[derive(Debug, Encode, Decode, Clone, Default, PartialEq, Eq)]
 pub struct Borrow<AssetId, Balance, BlockNumber, AccountId> {
@@ -168,20 +163,23 @@ decl_storage! {
     trait Store for Module<T: Trait> as LSBiding {
         /// module level switch
         pub Paused get(paused) : bool = false;
-
+        /// hold borrowers' collateral temporarily
         pub MoneyPool get(money_pool) config() : T::AccountId;
-
+        /// Platform is just a account receiving potential fees
         pub Platform get(platform) config() : T::AccountId;
-
+        /// TradingPairs contains all supported trading pairs, oracle should provide price information for all trading pairs.
         pub TradingPairs get(trading_pairs) config() : Vec<TradingPair<T::AssetId>>;
-
+        /// LTV must be greater than this value to create a new borrow
         pub SafeLTV get(safe_ltv) config() : u32;
+        /// a loan will be liquidated when LTV is below this
         pub LiquidateLTV get(liquidate_ltv) config() : u32;
-
+        /// minimium borrow terms, count in natural days
         pub MinBorrowTerms get(min_borrow_terms) config() : u64; // days of our lives
+        /// minimium interest rate
         pub MinBorrowInterestRate get(min_borrow_interest_rate) config() : u64;
-
+        /// borrow id counter
         pub NextBorrowId get(next_borrow_id) : BorrowId = 1;
+        /// loan id counter
         pub NextLoanId get(next_loan_id) : LoanId = 1;
 
         /// an account can only have one alive borrow at a time
@@ -226,6 +224,7 @@ decl_module! {
     /// The module declaration.
     pub struct Module<T: Trait> for enum Call where origin: T::Origin {
         const LTV_SCALE: u32 = LTV_SCALE;
+        const INTEREST_SCALE: u64 = INTEREST_RATE_PRECISION;
 
         fn deposit_event() = default;
 
@@ -234,47 +233,10 @@ decl_module! {
 
         fn on_finalize(block_number: T::BlockNumber) {
             if (block_number % 2.into()).is_zero() && !((block_number + 1.into()) % 5.into()).is_zero() {
-                // check alive borrows
-                let mut new_alives: Vec<BorrowId> = Vec::new();
-                AliveBorrowIds::take().into_iter().for_each(|borrow_id| {
-                    let borrow = <Borrows<T>>::get(borrow_id);
-                    if borrow.dead_after.is_some() && borrow.dead_after.unwrap() <= block_number {
-                        <Borrows<T>>::mutate(borrow_id, |v| {
-                            v.status = BorrowStatus::Dead;
-                        });
-                        Self::deposit_event(RawEvent::BorrowDied(borrow_id.clone()));
-                    } else {
-                        new_alives.push(borrow_id.clone());
-                    }
-                });
-                AliveBorrowIds::put(new_alives);
+                Self::periodic_check_borrows(block_number);
             }
-
             if ((block_number + 1.into()) % 5.into()).is_zero()  {
-                // check alive loans
-                let account_ids = <AccountIdsWithLiveLoans<T>>::get();
-                for account_id in account_ids {
-                    let loan_ids = <AliveLoanIdsByAccountId<T>>::get(account_id);
-                    for loan_id in loan_ids {
-                        let mut loan = <Loans<T>>::get(&loan_id);
-                        let trading_pair_prices =
-                            Self::fetch_trading_pair_prices(loan.loan_asset_id, loan.collateral_asset_id);
-                        if trading_pair_prices.is_none() {
-                            continue;
-                        } else {
-                            let trading_pair_prices = trading_pair_prices.unwrap();
-                            if Self::ltv_meet_liquidation(&trading_pair_prices, loan.loan_balance, loan.collateral_balance) {
-                                loan.status = LoanHealth::ToBeLiquidated;
-                                <Loans<T>>::insert(&loan_id, loan);
-                                Self::deposit_event(RawEvent::LoanToBeLiquidated(loan_id.clone()));
-                            } else if block_number > loan.due {
-                                loan.status = LoanHealth::Overdue;
-                                <Loans<T>>::insert(&loan_id, loan);
-                                Self::deposit_event(RawEvent::LoanOverdue(loan_id.clone()));
-                            }
-                        }
-                    }
-                }
+                Self::periodic_check_loans(block_number);
             }
         }
 
@@ -1033,6 +995,58 @@ impl<T: Trait> Module<T> {
         }
 
         Ok(borrow)
+    }
+
+    /// this will go through all borrows currently alive,
+    /// mark those who have reached the end of lives to be dead.
+    pub fn periodic_check_borrows(block_number: T::BlockNumber) {
+        // check alive borrows
+        let mut new_alives: Vec<BorrowId> = Vec::new();
+        AliveBorrowIds::take().into_iter().for_each(|borrow_id| {
+            let borrow = <Borrows<T>>::get(borrow_id);
+            if borrow.dead_after.is_some() && borrow.dead_after.unwrap() <= block_number {
+                <Borrows<T>>::mutate(borrow_id, |v| {
+                    v.status = BorrowStatus::Dead;
+                });
+                Self::deposit_event(RawEvent::BorrowDied(borrow_id.clone()));
+            } else {
+                new_alives.push(borrow_id.clone());
+            }
+        });
+        AliveBorrowIds::put(new_alives);
+    }
+
+    /// this will go through all loans currently alive,
+    /// calculate ltv instantly and mark loans 'ToBeLiquidated' if any whos ltv is below LTVLiquidate.
+    pub fn periodic_check_loans(block_number: T::BlockNumber) {
+        // check alive loans
+        let account_ids = <AccountIdsWithLiveLoans<T>>::get();
+        for account_id in account_ids {
+            let loan_ids = <AliveLoanIdsByAccountId<T>>::get(account_id);
+            for loan_id in loan_ids {
+                let mut loan = <Loans<T>>::get(&loan_id);
+                let trading_pair_prices =
+                    Self::fetch_trading_pair_prices(loan.loan_asset_id, loan.collateral_asset_id);
+                if trading_pair_prices.is_none() {
+                    continue;
+                } else {
+                    let trading_pair_prices = trading_pair_prices.unwrap();
+                    if Self::ltv_meet_liquidation(
+                        &trading_pair_prices,
+                        loan.loan_balance,
+                        loan.collateral_balance,
+                    ) {
+                        loan.status = LoanHealth::ToBeLiquidated;
+                        <Loans<T>>::insert(&loan_id, loan);
+                        Self::deposit_event(RawEvent::LoanToBeLiquidated(loan_id.clone()));
+                    } else if block_number > loan.due {
+                        loan.status = LoanHealth::Overdue;
+                        <Loans<T>>::insert(&loan_id, loan);
+                        Self::deposit_event(RawEvent::LoanOverdue(loan_id.clone()));
+                    }
+                }
+            }
+        }
     }
 
     fn fetch_price(asset_id: T::AssetId) -> Option<u64> {
