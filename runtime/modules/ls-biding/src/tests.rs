@@ -114,6 +114,24 @@ fn ltv_meet_safty_works() {
 }
 
 #[test]
+fn expected_interest_works() {
+    ExtBuilder::default().build().execute_with(|| {
+        let borrow_amount =
+            <<Test as generic_asset::Trait>::Balance as TryFrom<u64>>::try_from(10000_00000000)
+                .ok()
+                .unwrap();
+        let interest = LSBidingTest::calculate_expected_interest(20000, 10, borrow_amount);
+        dbg!(interest);
+        assert_eq!(
+            interest,
+            <<Test as generic_asset::Trait>::Balance as TryFrom<u64>>::try_from(20_00000000)
+                .ok()
+                .unwrap()
+        );
+    });
+}
+
+#[test]
 fn invalid_borrow_works() {
     let root: <Test as system::Trait>::AccountId = get_from_seed::<sr25519::Public>("Root");
     let eve: <Test as system::Trait>::AccountId = get_from_seed::<sr25519::Public>("Eve");
@@ -143,7 +161,7 @@ fn invalid_borrow_works() {
         };
         let options = crate::BorrowOptions {
             amount: <<Test as generic_asset::Trait>::Balance as TryFrom<u64>>::try_from(
-                3000_00000000,
+                4000_00000000,
             )
             .ok()
             .unwrap(),
@@ -155,7 +173,7 @@ fn invalid_borrow_works() {
         assert_noop!(
             LSBidingTest::create_borrow(
                 eve,
-                <<Test as generic_asset::Trait>::Balance as TryFrom<u64>>::try_from(100000000)
+                <<Test as generic_asset::Trait>::Balance as TryFrom<u64>>::try_from(1_00000000)
                     .ok()
                     .unwrap(),
                 trading_pair,

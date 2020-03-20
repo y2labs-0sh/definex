@@ -544,16 +544,17 @@ impl<T: Trait> Module<T> {
                 .ok_or(Error::<T>::TradingPairPriceMissing)?;
 
         // collateral - expected_interest meet safty ltv
-        let expected_interest = Self::calculate_expected_interest(
-            borrow_options.interest_rate,
-            borrow_options.terms,
-            borrow_options.amount,
-        );
+        // let expected_interest = Self::calculate_expected_interest(
+        //     borrow_options.interest_rate,
+        //     borrow_options.terms,
+        //     borrow_options.amount,
+        // );
+
         ensure!(
             Self::ltv_meet_safty(
                 &trading_pair_prices,
                 borrow_options.amount,
-                collateral_balance - expected_interest
+                collateral_balance
             ),
             Error::<T>::InitialCollateralRateFail
         );
