@@ -19,8 +19,8 @@ fn unittest_works() {
     dbg!("hello world");
 }
 
-fn next_block() {
-    SystemTest::set_block_number(SystemTest::block_number() + 1);
+fn next_n_block(n: <Test as system::Trait>::BlockNumber) {
+    SystemTest::set_block_number(SystemTest::block_number() + n);
     LSBidingTest::on_finalize(SystemTest::block_number());
 }
 
@@ -239,5 +239,208 @@ fn invalid_borrow_works() {
             ),
             Error::<Test>::InitialCollateralRateFail
         );
+    });
+}
+
+#[test]
+fn lend_works() {
+    let root: <Test as system::Trait>::AccountId = get_from_seed::<sr25519::Public>("Root");
+    let eve: <Test as system::Trait>::AccountId = get_from_seed::<sr25519::Public>("Eve");
+    let dave: <Test as system::Trait>::AccountId = get_from_seed::<sr25519::Public>("Dave");
+
+    ExtBuilder::default().build().execute_with(|| {
+        assert_ok!(GenericAssetTest::mint_free(
+            &BTC,
+            &root,
+            &eve,
+            &<<Test as generic_asset::Trait>::Balance as TryFrom<u64>>::try_from(1000_00000000)
+                .ok()
+                .unwrap(),
+        ));
+        assert_ok!(GenericAssetTest::mint_free(
+            &USDT,
+            &root,
+            &dave,
+            &<<Test as generic_asset::Trait>::Balance as TryFrom<u64>>::try_from(1000_00000000)
+                .ok()
+                .unwrap(),
+        ));
+
+        let trading_pair = crate::TradingPair {
+            collateral: BTC,
+            borrow: USDT,
+        };
+        let options = crate::BorrowOptions {
+            amount: <<Test as generic_asset::Trait>::Balance as TryFrom<u64>>::try_from(
+                100_00000000,
+            )
+            .ok()
+            .unwrap(),
+            terms: 10,
+            interest_rate: 20000,
+            warranty: Some(<Test as system::Trait>::BlockNumber::from(30u32)),
+        };
+        let borrow_id = LSBidingTest::next_borrow_id();
+        assert_ok!(LSBidingTest::create_borrow(
+            eve,
+            <<Test as generic_asset::Trait>::Balance as TryFrom<u64>>::try_from(100000000)
+                .ok()
+                .unwrap(),
+            trading_pair,
+            options,
+        ));
+
+        let loan_id = LSBidingTest::next_loan_id();
+        assert_ok!(LSBidingTest::create_loan(dave, borrow_id));
+
+        let loan = LSBidingTest::loans(loan_id);
+        assert_eq!(loan.borrow_id, borrow_id);
+        assert_eq!(loan.due, 864001u64);
+
+        dbg!(loan);
+    });
+}
+
+#[test]
+fn repay_works() {
+    let root: <Test as system::Trait>::AccountId = get_from_seed::<sr25519::Public>("Root");
+    let eve: <Test as system::Trait>::AccountId = get_from_seed::<sr25519::Public>("Eve");
+    let dave: <Test as system::Trait>::AccountId = get_from_seed::<sr25519::Public>("Dave");
+
+    ExtBuilder::default().build().execute_with(|| {
+        assert_ok!(GenericAssetTest::mint_free(
+            &BTC,
+            &root,
+            &eve,
+            &<<Test as generic_asset::Trait>::Balance as TryFrom<u64>>::try_from(1000_00000000)
+                .ok()
+                .unwrap(),
+        ));
+        assert_ok!(GenericAssetTest::mint_free(
+            &USDT,
+            &root,
+            &dave,
+            &<<Test as generic_asset::Trait>::Balance as TryFrom<u64>>::try_from(1000_00000000)
+                .ok()
+                .unwrap(),
+        ));
+
+        let trading_pair = crate::TradingPair {
+            collateral: BTC,
+            borrow: USDT,
+        };
+        let options = crate::BorrowOptions {
+            amount: <<Test as generic_asset::Trait>::Balance as TryFrom<u64>>::try_from(
+                100_00000000,
+            )
+            .ok()
+            .unwrap(),
+            terms: 10,
+            interest_rate: 20000,
+            warranty: Some(<Test as system::Trait>::BlockNumber::from(30u32)),
+        };
+        let borrow_id = LSBidingTest::next_borrow_id();
+        assert_ok!(LSBidingTest::create_borrow(
+            eve,
+            <<Test as generic_asset::Trait>::Balance as TryFrom<u64>>::try_from(100000000)
+                .ok()
+                .unwrap(),
+            trading_pair,
+            options,
+        ));
+
+        let loan_id = LSBidingTest::next_loan_id();
+        assert_ok!(LSBidingTest::create_loan(dave, borrow_id));
+        let loan = LSBidingTest::loans(loan_id);
+        assert_eq!(loan.borrow_id, borrow_id);
+        assert_noop!(
+            LSBidingTest::repay_loan(eve, borrow_id),
+            Error::<Test>::NotEnoughBalance
+        );
+        assert_ok!(GenericAssetTest::mint_free(
+            &USDT,
+            &root,
+            &eve,
+            &<<Test as generic_asset::Trait>::Balance as TryFrom<u64>>::try_from(2_00000000)
+                .ok()
+                .unwrap(),
+        ));
+        assert_ok!(LSBidingTest::repay_loan(eve, borrow_id));
+        assert_eq!(LSBidingTest::alive_borrow_ids().contains(&borrow_id), false);
+    });
+}
+
+#[test]
+fn liquidate_works() {
+    let root: <Test as system::Trait>::AccountId = get_from_seed::<sr25519::Public>("Root");
+    let eve: <Test as system::Trait>::AccountId = get_from_seed::<sr25519::Public>("Eve");
+    let dave: <Test as system::Trait>::AccountId = get_from_seed::<sr25519::Public>("Dave");
+
+    ExtBuilder::default().build().execute_with(|| {
+        assert_ok!(GenericAssetTest::mint_free(
+            &BTC,
+            &root,
+            &eve,
+            &<<Test as generic_asset::Trait>::Balance as TryFrom<u64>>::try_from(1000_00000000)
+                .ok()
+                .unwrap(),
+        ));
+        assert_ok!(GenericAssetTest::mint_free(
+            &USDT,
+            &root,
+            &dave,
+            &<<Test as generic_asset::Trait>::Balance as TryFrom<u64>>::try_from(1000_00000000)
+                .ok()
+                .unwrap(),
+        ));
+
+        let trading_pair = crate::TradingPair {
+            collateral: BTC,
+            borrow: USDT,
+        };
+        let options = crate::BorrowOptions {
+            amount: <<Test as generic_asset::Trait>::Balance as TryFrom<u64>>::try_from(
+                100_00000000,
+            )
+            .ok()
+            .unwrap(),
+            terms: 1,
+            interest_rate: 20000,
+            warranty: Some(<Test as system::Trait>::BlockNumber::from(30u32)),
+        };
+        let borrow_id = LSBidingTest::next_borrow_id();
+        assert_ok!(LSBidingTest::create_borrow(
+            eve,
+            <<Test as generic_asset::Trait>::Balance as TryFrom<u64>>::try_from(100000000)
+                .ok()
+                .unwrap(),
+            trading_pair,
+            options,
+        ));
+        let loan_id = LSBidingTest::next_loan_id();
+        assert_ok!(LSBidingTest::create_loan(dave, borrow_id));
+        assert_noop!(
+            LSBidingTest::repay_loan(eve, borrow_id),
+            Error::<Test>::NotEnoughBalance
+        );
+
+        next_n_block(86403u32.into());
+
+        let loan = LSBidingTest::loans(loan_id);
+
+        assert_eq!(loan.status, LoanHealth::Overdue);
+        assert_ok!(GenericAssetTest::mint_free(
+            &USDT,
+            &root,
+            &eve,
+            &<<Test as generic_asset::Trait>::Balance as TryFrom<u64>>::try_from(2_00000000)
+                .ok()
+                .unwrap(),
+        ));
+
+        assert_ok!(LSBidingTest::liquidate_loan(dave, loan_id));
+
+        let loan = LSBidingTest::loans(loan_id);
+        assert_eq!(loan.status, LoanHealth::Liquidated);
     });
 }

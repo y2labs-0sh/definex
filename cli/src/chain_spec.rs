@@ -421,11 +421,18 @@ pub fn testnet_genesis(
         new_oracle: Some(NewOracleConfig {
             crypto_price_sources: vec![(
                 b"BTC".to_vec(),
-                vec![(
-                    b"coincap".to_vec(),
-                    b"https://api.coincap.io/v2/assets/bitcoin".to_vec(),
-                    vec![b"data".to_vec(), b"priceUsd".to_vec()],
-                )],
+                vec![
+                    (
+                        b"coincap".to_vec(),
+                        b"https://api.coincap.io/v2/assets/bitcoin".to_vec(),
+                        vec![b"data".to_vec(), b"priceUsd".to_vec()],
+                    ),
+                    (
+                        b"cryptocompare".to_vec(),
+                        b"https://min-api.cryptocompare.com/data/price?fsym=BTC&tsyms=USD".to_vec(),
+                        vec![b"USD".to_vec()],
+                    ),
+                ],
             )],
             current_price: vec![(b"DUSD".to_vec(), 1 * node_runtime::ORACLE_PRICE_SCALE)],
         }),

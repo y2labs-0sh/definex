@@ -778,21 +778,25 @@ impl<T: Trait> Module<T> {
     pub fn liquidate_loan(liquidator: T::AccountId, loan_id: LoanId) -> DispatchResult {
         let loan = <Loans<T>>::get(loan_id);
         ensure!(
-            loan.status == LoanHealth::Well || loan.status == LoanHealth::ToBeLiquidated,
+            loan.status == LoanHealth::Overdue
+                || loan.status == LoanHealth::Well
+                || loan.status == LoanHealth::ToBeLiquidated,
             Error::<T>::ShouldNotBeLiquidated
         );
 
         let trading_pair_prices =
             Self::fetch_trading_pair_prices(loan.loan_asset_id, loan.collateral_asset_id)
                 .ok_or(Error::<T>::TradingPairPriceMissing)?;
-        ensure!(
-            Self::ltv_meet_liquidation(
-                &trading_pair_prices,
-                loan.loan_balance,
-                loan.collateral_balance
-            ),
-            Error::<T>::LTVNotMeet
-        );
+        if loan.status != LoanHealth::Overdue {
+            ensure!(
+                Self::ltv_meet_liquidation(
+                    &trading_pair_prices,
+                    loan.loan_balance,
+                    loan.collateral_balance
+                ),
+                Error::<T>::LTVNotMeet
+            );
+        }
 
         let borrow = <Borrows<T>>::get(loan.borrow_id);
         let expected_interest = Self::calculate_expected_interest(
