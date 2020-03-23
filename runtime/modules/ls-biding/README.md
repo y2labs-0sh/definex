@@ -157,3 +157,26 @@ api.tx.lsBiding.repay(borrow_id:BorrowId)
     "PriceInUSDT": "u64"
 }
 ```
+
+## Errors
+```rust
+            Error::Paused => 0,
+            Error::MinBorrowTerms => 1,
+            Error::MinBorrowInterestRate => 2,
+            Error::CanNotReserve => 3,
+            Error::MultipleAliveBorrows => 4,
+            Error::BorrowNotAlive => 5,
+            Error::TradingPairNotAllowed => 6,
+            Error::NotOwnerOfBorrow => 7,
+            Error::UnknownBorrowId => 8,
+            Error::UnknownLoanId => 9,
+            Error::NoLockedBalance => 10,
+            Error::InitialCollateralRateFail => 11,
+            Error::NotEnoughBalance => 12,
+            Error::TradingPairPriceMissing => 13,
+            Error::BorrowNotLoaned => 14,
+            Error::LTVNotMeet => 15,
+            Error::ShouldNotBeLiquidated => 16,
+            Error::ShouldBeLiquidated => 17,
+            Error::LoanNotWell => 18,
+```
