@@ -1,5 +1,20 @@
-//! This module is meant for Web3 grant.
-//! In this module, definex implemented a DeFi model which follows a 'maker-taker'.
+// Copyright (C) 2020 by definex.io
+
+// This program is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+
+// You should have received a copy of the GNU General Public License
+// along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+// This module is meant for Web3 grant. In this module, definex implemented a DeFi model which follows a 'maker-taker'.
+
 //! Basically, there are 3 major roles:
 //!     1. borrower: those who want to borrow money. they can publish their needs (collateral amount, borrow amount, how long they will repay, a specific interest rate, etc.) on the platform.
 //!     2. loaner: those who bring liquidity to the platform. they select the borrows that most profitable, and lend the money to the borrower. By doing this, they earn the negotiated interest.
