@@ -21,7 +21,7 @@ std = [
 
 [dependencies.simple-json]
 default-features = false
-path = "/home/kyli/Codes/rust/github.com/kylidboy/simple-json"
+git = "https://github.com/kylidboy/simple-json.git"
 version = "0.1"
 
 [dependencies.rstd]

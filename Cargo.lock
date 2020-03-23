@@ -6242,6 +6242,7 @@ dependencies = [
 [[package]]
 name = "simple-json"
 version = "0.1.5"
+source = "git+https://github.com/kylidboy/simple-json.git#b0abdb5d0ca00fd325451882d7eab0ba4b5dab29"
 dependencies = [
  "num-traits",
  "paste",
