@@ -40,13 +40,13 @@ api.query.lsBiding.next_loan_id() : LoanId
 ## extrinsics
 
 #### publish a new borrow with the borrow options
-api.tx.lsBiding.list_borrow(collateral_balance:Balance, trading_pair:TradingPair, borrow_options:BorrowOptions)
+api.tx.lsBiding.make(collateral_balance:Balance, trading_pair:TradingPair, borrow_options:BorrowOptions)
 
 #### remove a borrow specified by borrow_id
-api.tx.lsBiding.unlist_borrow(borrow_id:BorrowId)
+api.tx.lsBiding.cancel(borrow_id:BorrowId)
 
 #### take a borrow specified by borrow_id
-api.tx.lsBiding.lend(borrow_id:BorrowId)
+api.tx.lsBiding.take(borrow_id:BorrowId)
 
 #### liquidate a loan specified by loan_id
 api.tx.lsBiding.liquidate(loan_id:LoanId)

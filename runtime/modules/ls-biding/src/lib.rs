@@ -312,21 +312,21 @@ decl_module! {
         }
 
         #[weight = SimpleDispatchInfo::FixedNormal(1_000_000)]
-        pub fn list_borrow(origin, collateral_balance: T::Balance, trading_pair: TradingPair<T::AssetId>, borrow_options: BorrowOptions<T::Balance,T::BlockNumber>) -> DispatchResult {
+        pub fn make(origin, collateral_balance: T::Balance, trading_pair: TradingPair<T::AssetId>, borrow_options: BorrowOptions<T::Balance,T::BlockNumber>) -> DispatchResult {
             ensure!(!Self::paused(), Error::<T>::Paused);
             let who = ensure_signed(origin)?;
             Self::create_borrow(who, collateral_balance, trading_pair, borrow_options)
         }
 
         #[weight = SimpleDispatchInfo::FixedNormal(500_000)]
-        pub fn unlist_borrow(origin, borrow_id: BorrowId) -> DispatchResult {
+        pub fn cancel(origin, borrow_id: BorrowId) -> DispatchResult {
             ensure!(!Self::paused(), Error::<T>::Paused);
             let who = ensure_signed(origin)?;
             Self::remove_borrow(who, borrow_id)
         }
 
         #[weight = SimpleDispatchInfo::FixedNormal(1_000_000)]
-        pub fn lend(origin, borrow_id: BorrowId) -> DispatchResult {
+        pub fn take(origin, borrow_id: BorrowId) -> DispatchResult {
             ensure!(!Self::paused(), Error::<T>::Paused);
             let who = ensure_signed(origin)?;
             Self::create_loan(who, borrow_id)
