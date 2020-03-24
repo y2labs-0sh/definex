@@ -332,7 +332,7 @@ decl_storage! {
             double_map hasher(blake2_256) T::AssetId, hasher(twox_128) T::AccountId => T::Balance;
 
         /// "Symbols" can only keep Vec<u8>, and utf8 safty is totally on the client side
-        pub Symbols get(symbols) config() : map hasher(blake2_256) T::AssetId => Vec<u8>;
+        pub Symbols get(symbols) config() : linked_map hasher(blake2_256) T::AssetId => Vec<u8>;
 
         /// Next available ID for user-created asset.
         pub NextAssetId get(fn next_asset_id) config(): T::AssetId;
