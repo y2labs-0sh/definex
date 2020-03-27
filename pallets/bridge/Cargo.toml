@@ -1,0 +1,100 @@
+[package]
+name = "bridge"
+version = "0.1.0"
+authors = ["Definex Team"]
+edition = "2018"
+
+[features]
+default = ["std"]
+std = [
+    "serde",
+    "codec/std",
+    "rstd/std",
+    "support/std",
+    "primitives/std",
+    "system/std",
+    "sp-runtime/std",
+    "runtime-io/std",
+    "generic-asset/std",
+    "sudo/std",
+]
+
+[dependencies.serde]
+version = "1.0"
+optional = true
+
+[dependencies.rstd]
+default-features = false
+package = "sp-std"
+git = "https://github.com/paritytech/substrate.git"
+rev = "6ce091737dc7f114dd420f8b879f8a467c1d501b"
+
+
+[dependencies.primitives]
+default-features = false
+git = "https://github.com/paritytech/substrate.git"
+package = "sp-core"
+rev = "6ce091737dc7f114dd420f8b879f8a467c1d501b"
+
+
+[dependencies.sudo]
+default_features = false
+git = "https://github.com/paritytech/substrate.git"
+package = "pallet-sudo"
+rev = "6ce091737dc7f114dd420f8b879f8a467c1d501b"
+
+
+[dependencies.codec]
+default-features = false
+features = ["derive"]
+package = "parity-scale-codec"
+version = "1.0.0"
+
+[dependencies.support]
+default_features = false
+git = "https://github.com/paritytech/substrate.git"
+package = "frame-support"
+rev = "6ce091737dc7f114dd420f8b879f8a467c1d501b"
+
+[dependencies.generic-asset]
+default-features = false
+path = "../generic-asset"
+
+[dependencies.system]
+default_features = false
+git = "https://github.com/paritytech/substrate.git"
+package = "frame-system"
+rev = "6ce091737dc7f114dd420f8b879f8a467c1d501b"
+
+
+[dependencies.sp-runtime]
+default_features = false
+git = "https://github.com/paritytech/substrate.git"
+package = "sp-runtime"
+rev = "6ce091737dc7f114dd420f8b879f8a467c1d501b"
+
+
+[dependencies.runtime-io]
+default_features = false
+git = "https://github.com/paritytech/substrate.git"
+package = "sp-io"
+rev = "6ce091737dc7f114dd420f8b879f8a467c1d501b"
+
+
+[dev-dependencies.primitives]
+git = "https://github.com/paritytech/substrate.git"
+package = "sp-core"
+rev = "6ce091737dc7f114dd420f8b879f8a467c1d501b"
+
+
+[dev-dependencies.timestamp]
+git = "https://github.com/paritytech/substrate.git"
+package = "pallet-timestamp"
+rev = "6ce091737dc7f114dd420f8b879f8a467c1d501b"
+
+
+[dev-dependencies.balances]
+git = "https://github.com/paritytech/substrate.git"
+package = "pallet-balances"
+rev = "6ce091737dc7f114dd420f8b879f8a467c1d501b"
+

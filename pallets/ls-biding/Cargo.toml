@@ -1,0 +1,91 @@
+[package]
+name = "ls-biding"
+version = "0.1.0"
+authors = ["Definex Team"]
+edition = "2018"
+
+[features]
+default = ["std"]
+std = [
+    "serde",
+    "codec/std",
+    "sp-std/std",
+    "support/std",
+    "system/std",
+    "sp-runtime/std",
+    "sp-core/std",
+    "sp-io/std",
+    "timestamp/std",
+    "generic-asset/std",
+    "new-oracle/std",
+]
+
+[dependencies.sp-std]
+default-features = false
+package = "sp-std"
+git = "https://github.com/paritytech/substrate.git"
+rev = "6ce091737dc7f114dd420f8b879f8a467c1d501b"
+
+[dependencies.serde]
+version = "1.0.104"
+optional = true
+features = [ "derive" ]
+
+[dependencies.codec]
+default-features = false
+features = ["derive"]
+package = "parity-scale-codec"
+version = '1.0.6'
+
+[dependencies.support]
+default_features = false
+git = "https://github.com/paritytech/substrate.git"
+package = "frame-support"
+rev = "6ce091737dc7f114dd420f8b879f8a467c1d501b"
+
+[dependencies.system]
+default_features = false
+git = "https://github.com/paritytech/substrate.git"
+package = "frame-system"
+rev = "6ce091737dc7f114dd420f8b879f8a467c1d501b"
+
+[dependencies.sp-runtime]
+default_features = false
+git = "https://github.com/paritytech/substrate.git"
+package = "sp-runtime"
+rev = "6ce091737dc7f114dd420f8b879f8a467c1d501b"
+
+[dependencies.sp-io]
+default_features = false
+git = "https://github.com/paritytech/substrate.git"
+package = "sp-io"
+rev = "6ce091737dc7f114dd420f8b879f8a467c1d501b"
+
+[dependencies.generic-asset]
+default_features = false
+path = "../generic-asset"
+
+[dependencies.new-oracle]
+default_features = false
+path = "../new-oracle"
+
+[dependencies.timestamp]
+default_features = false
+git = "https://github.com/paritytech/substrate.git"
+package = "pallet-timestamp"
+rev = "6ce091737dc7f114dd420f8b879f8a467c1d501b"
+
+[dependencies.sp-core]
+default_features = false
+git = "https://github.com/paritytech/substrate.git"
+package = "sp-core"
+rev = "6ce091737dc7f114dd420f8b879f8a467c1d501b"
+
+[dev-dependencies]
+sudo = { git = "https://github.com/paritytech/substrate.git", package = "pallet-sudo", rev = "6ce091737dc7f114dd420f8b879f8a467c1d501b" }
+balances = { git = "https://github.com/paritytech/substrate.git", package = "pallet-balances", rev = "6ce091737dc7f114dd420f8b879f8a467c1d501b" }
+sp-std = { git = "https://github.com/paritytech/substrate.git", package = "sp-std", rev = "6ce091737dc7f114dd420f8b879f8a467c1d501b" }
+sp-version = { git = "https://github.com/paritytech/substrate.git", package = "sp-version", rev = "6ce091737dc7f114dd420f8b879f8a467c1d501b" }
+system = { git = "https://github.com/paritytech/substrate.git", package = "frame-system", rev = "6ce091737dc7f114dd420f8b879f8a467c1d501b" }
+sp-core = { git = "https://github.com/paritytech/substrate.git", package = "sp-core", rev = "6ce091737dc7f114dd420f8b879f8a467c1d501b" }
+hex-literal = '0.2.1'

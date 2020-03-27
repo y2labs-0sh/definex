@@ -1,0 +1,83 @@
+[package]
+name = "new-oracle"
+version = "2.0.0"
+authors = ["Definex Team"]
+edition = "2018"
+
+[features]
+default = ["std"]
+std = [
+    "serde",
+    "codec/std",
+    "sp-std/std",
+    "support/std",
+    "system/std",
+    "sp-runtime/std",
+    "timestamp/std",
+    "sp-io/std",
+    "sp-core/std",
+    "collective/std",
+]
+
+[dependencies.simple-json]
+default-features = false
+git = "https://github.com/kylidboy/simple-json.git"
+version = "0.1"
+
+[dependencies.sp-std]
+default-features = false
+package = "sp-std"
+git = "https://github.com/paritytech/substrate.git"
+rev = "6ce091737dc7f114dd420f8b879f8a467c1d501b"
+
+[dependencies.codec]
+default-features = false
+features = ["derive"]
+package = "parity-scale-codec"
+version = "1.0.0"
+
+[dependencies.support]
+default_features = false
+git = "https://github.com/paritytech/substrate.git"
+package = "frame-support"
+rev = "6ce091737dc7f114dd420f8b879f8a467c1d501b"
+
+[dependencies.system]
+default_features = false
+git = "https://github.com/paritytech/substrate.git"
+package = "frame-system"
+rev = "6ce091737dc7f114dd420f8b879f8a467c1d501b"
+
+[dependencies.timestamp]
+default_features = false
+git = "https://github.com/paritytech/substrate.git"
+package = "pallet-timestamp"
+rev = "6ce091737dc7f114dd420f8b879f8a467c1d501b"
+
+[dependencies.sp-runtime]
+default_features = false
+git = "https://github.com/paritytech/substrate.git"
+package = "sp-runtime"
+rev = "6ce091737dc7f114dd420f8b879f8a467c1d501b"
+
+[dependencies.sp-io]
+default_features = false
+git = "https://github.com/paritytech/substrate.git"
+package = "sp-io"
+rev = "6ce091737dc7f114dd420f8b879f8a467c1d501b"
+
+[dependencies.sp-core]
+default-features = false
+git = "https://github.com/paritytech/substrate.git"
+package = "sp-core"
+rev = "6ce091737dc7f114dd420f8b879f8a467c1d501b"
+
+[dependencies.collective]
+default-features = false
+git = "https://github.com/paritytech/substrate.git"
+package = "pallet-collective"
+rev = "6ce091737dc7f114dd420f8b879f8a467c1d501b"
+
+[dependencies]
+num-traits = { version = "0.2.8", default-features = false }
+serde = { optional = true, version = "1.0" }

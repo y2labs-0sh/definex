@@ -1,0 +1,72 @@
+[package]
+authors = ['Parity Technologies <admin@parity.io>']
+edition = '2018'
+homepage = 'https://substrate.dev'
+license = 'GPL-3.0'
+name = 'node-transaction-factory'
+repository = 'https://github.com/paritytech/substrate/'
+version = '0.8.0-alpha.5'
+
+[dependencies]
+log = '0.4.8'
+
+[dependencies.codec]
+features = ['derive']
+package = 'parity-scale-codec'
+version = '1.2.0'
+
+[dependencies.sc-block-builder]
+git = 'https://github.com/paritytech/substrate.git'
+rev = '6ce091737dc7f114dd420f8b879f8a467c1d501b'
+version = '0.8.0-alpha.5'
+
+[dependencies.sc-cli]
+git = 'https://github.com/paritytech/substrate.git'
+rev = '6ce091737dc7f114dd420f8b879f8a467c1d501b'
+version = '0.8.0-alpha.5'
+
+[dependencies.sc-client]
+git = 'https://github.com/paritytech/substrate.git'
+rev = '6ce091737dc7f114dd420f8b879f8a467c1d501b'
+version = '0.8.0-alpha.5'
+
+[dependencies.sc-client-api]
+git = 'https://github.com/paritytech/substrate.git'
+rev = '6ce091737dc7f114dd420f8b879f8a467c1d501b'
+version = '2.0.0-alpha.5'
+
+[dependencies.sc-service]
+default-features = false
+git = 'https://github.com/paritytech/substrate.git'
+rev = '6ce091737dc7f114dd420f8b879f8a467c1d501b'
+version = '0.8.0-alpha.5'
+
+[dependencies.sp-api]
+git = 'https://github.com/paritytech/substrate.git'
+rev = '6ce091737dc7f114dd420f8b879f8a467c1d501b'
+version = '2.0.0-alpha.5'
+
+[dependencies.sp-block-builder]
+git = 'https://github.com/paritytech/substrate.git'
+rev = '6ce091737dc7f114dd420f8b879f8a467c1d501b'
+version = '2.0.0-alpha.5'
+
+[dependencies.sp-blockchain]
+git = 'https://github.com/paritytech/substrate.git'
+rev = '6ce091737dc7f114dd420f8b879f8a467c1d501b'
+version = '2.0.0-alpha.5'
+
+[dependencies.sp-consensus]
+git = 'https://github.com/paritytech/substrate.git'
+rev = '6ce091737dc7f114dd420f8b879f8a467c1d501b'
+version = '0.8.0-alpha.5'
+
+[dependencies.sp-core]
+git = 'https://github.com/paritytech/substrate.git'
+rev = '6ce091737dc7f114dd420f8b879f8a467c1d501b'
+version = '2.0.0-alpha.5'
+
+[dependencies.sp-runtime]
+git = 'https://github.com/paritytech/substrate.git'
+rev = '6ce091737dc7f114dd420f8b879f8a467c1d501b'
+version = '2.0.0-alpha.5'
