@@ -19,12 +19,15 @@
 #![allow(dead_code)]
 
 use crate::*;
-use support::{assert_noop, assert_ok};
+use support::{
+    assert_noop, assert_ok,
+    traits::{OnFinalize, OnInitialize},
+};
 
 #[allow(unused_imports)]
 use sp_runtime::{
     testing::Header,
-    traits::{BlakeTwo256, IdentityLookup, OnFinalize, OnInitialize},
+    traits::{BlakeTwo256, IdentityLookup},
     Perbill,
 };
 

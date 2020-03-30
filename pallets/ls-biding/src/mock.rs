@@ -20,7 +20,9 @@
 
 use crate::*;
 use support::{
-    impl_outer_dispatch, impl_outer_event, impl_outer_origin, parameter_types, weights::Weight,
+    impl_outer_dispatch, impl_outer_event, impl_outer_origin, parameter_types,
+    traits::{OnFinalize, OnInitialize},
+    weights::Weight,
 };
 // The testing primitives are very useful for avoiding having to work with signatures
 // or public keys. `u64` is used as the `AccountId` and no `Signature`s are required.
@@ -37,14 +39,15 @@ use std::cell::RefCell;
 pub use sp_runtime::{
     testing::{Header, TestXt},
     traits::{
-        BlakeTwo256, ConvertInto, Extrinsic as ExtrinsicsT, IdentifyAccount, IdentityLookup,
-        OnFinalize, OnInitialize, Verify,
+        BlakeTwo256, ConvertInto, Extrinsic as ExtrinsicsT, IdentifyAccount, IdentityLookup, Verify,
     },
     MultiSignature, Perbill, RuntimeAppPublic,
 };
 
 pub type Signature = MultiSignature;
 pub type AccountPublic = <Signature as Verify>::Signer;
+
+pub type BlockNumber = u64;
 
 thread_local! {
       pub(crate) static EXISTENTIAL_DEPOSIT: RefCell<u128> = RefCell::new(0);
@@ -79,7 +82,7 @@ impl system::Trait for Test {
     type Origin = Origin;
     type Call = ();
     type Index = u64;
-    type BlockNumber = u64;
+    type BlockNumber = BlockNumber;
     type Hash = H256;
     type Hashing = BlakeTwo256;
     type AccountId = sp_core::sr25519::Public; // <<Signature as Verify>::Signer as IdentifyAccount>::AccountId; // sp_core::sr25519::Public;
@@ -94,7 +97,7 @@ impl system::Trait for Test {
     type ModuleToIndex = ();
     type AccountData = ();
     type OnNewAccount = ();
-    type OnReapAccount = ();
+    type OnKilledAccount = ();
 }
 
 type Extrinsic = TestXt<new_oracle::Call<Test>, ()>;
