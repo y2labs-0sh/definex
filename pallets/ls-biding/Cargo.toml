@@ -18,7 +18,12 @@ std = [
     "timestamp/std",
     "generic-asset/std",
     "new-oracle/std",
+    "ls-biding-primitives/std",
 ]
+
+[dependencies.ls-biding-primitives]
+path = "./primitives"
+default-features = false
 
 [dependencies.sp-std]
 default-features = false

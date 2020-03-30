@@ -78,7 +78,10 @@ std = [
     'new-oracle/std',
     'ls-biding/std',
     'generic-asset-rpc-runtime-api/std',
+    'ls-biding-rpc-runtime-api/std',
+    'ls-biding-primitives/std',
 ]
+
 [dependencies.codec]
 default-features = false
 features = ['derive']
@@ -424,6 +427,14 @@ path = "../pallets/ls-biding"
 [dependencies.generic-asset-rpc-runtime-api]
 default-features = false
 path = "../pallets/generic-asset/rpc/runtime-api"
+
+[dependencies.ls-biding-rpc-runtime-api]
+default-features = false
+path = "../pallets/ls-biding/rpc/runtime-api"
+
+[dependencies.ls-biding-primitives]
+default-features = false
+path = "../pallets/ls-biding/primitives"
 
 [package]
 authors = ['Parity Technologies <admin@parity.io>']

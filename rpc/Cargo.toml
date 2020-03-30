@@ -90,3 +90,6 @@ version = '2.0.0-alpha.5'
 
 [dependencies.generic-asset-rpc]
 path = "../pallets/generic-asset/rpc"
+
+[dependencies.ls-biding-rpc]
+path = "../pallets/ls-biding/rpc"

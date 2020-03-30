@@ -3036,6 +3036,7 @@ dependencies = [
  "frame-system",
  "generic-asset",
  "hex-literal",
+ "ls-biding-primitives",
  "new-oracle",
  "pallet-balances",
  "pallet-sudo",
@@ -3047,6 +3048,46 @@ dependencies = [
  "sp-runtime",
  "sp-std",
  "sp-version",
+]
+
+[[package]]
+name = "ls-biding-primitives"
+version = "0.0.1"
+dependencies = [
+ "frame-support",
+ "parity-scale-codec",
+ "serde",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
+name = "ls-biding-rpc"
+version = "0.1.0"
+dependencies = [
+ "jsonrpc-core",
+ "jsonrpc-core-client",
+ "jsonrpc-derive",
+ "ls-biding-primitives",
+ "ls-biding-rpc-runtime-api",
+ "parity-scale-codec",
+ "serde",
+ "sp-api",
+ "sp-blockchain",
+ "sp-core",
+ "sp-rpc",
+ "sp-runtime",
+]
+
+[[package]]
+name = "ls-biding-rpc-runtime-api"
+version = "0.0.1"
+dependencies = [
+ "ls-biding-primitives",
+ "parity-scale-codec",
+ "sp-api",
+ "sp-runtime",
+ "sp-std",
 ]
 
 [[package]]
@@ -3445,6 +3486,7 @@ version = "2.0.0-alpha.5"
 dependencies = [
  "generic-asset-rpc",
  "jsonrpc-core",
+ "ls-biding-rpc",
  "node-primitives",
  "node-runtime",
  "pallet-contracts-rpc",
@@ -3490,6 +3532,8 @@ dependencies = [
  "generic-asset-rpc-runtime-api",
  "integer-sqrt",
  "ls-biding",
+ "ls-biding-primitives",
+ "ls-biding-rpc-runtime-api",
  "new-oracle",
  "node-primitives",
  "pallet-authority-discovery",

@@ -904,6 +904,16 @@ impl_runtime_apis! {
         }
     }
 
+    impl ls_biding_rpc_runtime_api::LSBidingApi<Block, AssetId, Balance, BlockNumber, AccountId> for Runtime {
+        fn get_borrows(size: Option<u64>, offset: Option<u64>) -> Option<Vec<ls_biding_primitives::Borrow<AssetId, Balance, BlockNumber, AccountId>>> {
+            LSBiding::get_borrows(size, offset)
+        }
+
+        fn get_loans(size: Option<u64>, offset: Option<u64>) -> Option<Vec<ls_biding_primitives::Loan<AssetId, Balance, BlockNumber, AccountId>>> {
+            LSBiding::get_loans(size, offset)
+        }
+    }
+
     impl sp_session::SessionKeys<Block> for Runtime {
         fn generate_session_keys(seed: Option<Vec<u8>>) -> Vec<u8> {
             SessionKeys::generate(seed)

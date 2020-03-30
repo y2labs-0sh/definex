@@ -52,113 +52,20 @@ use support::{
         WithdrawReason, WithdrawReasons,
     },
     weights::SimpleDispatchInfo,
+    IterableStorageMap,
 };
 #[allow(unused_imports)]
 use system::{ensure_root, ensure_signed};
 
+pub use ls_biding_primitives::*;
+
 mod mock;
 mod tests;
-
-pub type LoanId = u128;
-pub type BorrowId = u128;
 
 const LOCK_ID: LockIdentifier = *b"dfxlsbrw";
 
 pub const INTEREST_RATE_PRECISION: u64 = 10000_0000;
 pub const LTV_SCALE: u32 = 10000;
-
-#[derive(Debug, Encode, Decode, Clone, PartialEq, Eq)]
-pub enum LoanHealth {
-    Well,
-    ToBeLiquidated,
-    Overdue,
-    Liquidated,
-    Dead,
-    Completed,
-}
-impl Default for LoanHealth {
-    fn default() -> Self {
-        Self::Well
-    }
-}
-
-#[derive(Debug, Encode, Decode, Clone, PartialEq, Eq)]
-pub enum LiquidationType {
-    JustCollateral,
-    SellCollateral,
-}
-impl Default for LiquidationType {
-    fn default() -> Self {
-        LiquidationType::JustCollateral
-    }
-}
-
-#[derive(Debug, Encode, Decode, Clone, Default, PartialEq, Eq)]
-pub struct Loan<AssetId, Balance, BlockNumber, AccountId> {
-    pub id: LoanId,
-    pub borrow_id: BorrowId,
-    pub borrower_id: AccountId,
-    pub loaner_id: AccountId,
-    pub due: BlockNumber,
-    pub collateral_asset_id: AssetId,
-    pub collateral_balance: Balance,
-    pub loan_balance: Balance,
-    pub loan_asset_id: AssetId,
-    pub status: LoanHealth,
-    pub interest_rate: u64,
-    pub liquidation_type: LiquidationType,
-}
-
-#[derive(Debug, Encode, Decode, Clone, Default, PartialEq, Eq)]
-pub struct Borrow<AssetId, Balance, BlockNumber, AccountId> {
-    pub id: BorrowId,
-    pub lock_id: u128,
-    pub who: AccountId,
-    pub status: BorrowStatus,
-    pub borrow_asset_id: AssetId,
-    pub collateral_asset_id: AssetId,
-    pub borrow_balance: Balance,
-    pub collateral_balance: Balance,
-    pub terms: u64, // days of our lives
-    pub interest_rate: u64,
-    pub dead_after: Option<BlockNumber>,
-    pub loan_id: Option<LoanId>,
-}
-
-#[derive(Debug, Encode, Decode, Clone, PartialEq, Eq)]
-pub enum BorrowStatus {
-    Alive,
-    Taken,
-    Completed,
-    Dead,
-    Liquidated,
-}
-impl Default for BorrowStatus {
-    fn default() -> Self {
-        Self::Alive
-    }
-}
-
-#[derive(Debug, Encode, Decode, Clone, PartialEq, Eq)]
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
-pub struct TradingPair<A> {
-    pub collateral: A,
-    pub borrow: A,
-}
-
-#[derive(Debug, Encode, Decode, Clone, PartialEq, Eq)]
-pub struct TradingPairPrices {
-    pub borrow_asset_price: u64,
-    pub collateral_asset_price: u64,
-}
-
-#[derive(Debug, Encode, Decode, Clone, PartialEq, Eq)]
-pub struct BorrowOptions<B, N> {
-    pub amount: B,
-    pub terms: u64,
-    pub interest_rate: u64,
-    pub warranty: Option<N>,
-}
 
 /// The module's configuration trait.
 pub trait Trait:
@@ -195,12 +102,12 @@ decl_storage! {
         pub NextLoanId get(next_loan_id) : LoanId = 1;
 
         /// an account can only have one alive borrow at a time
-        pub Borrows get(borrows) : map hasher(opaque_blake2_256) BorrowId => Borrow<T::AssetId, T::Balance, T::BlockNumber, T::AccountId>;
+        pub Borrows get(borrows) : map hasher(twox_64_concat) BorrowId => Borrow<T::AssetId, T::Balance, T::BlockNumber, T::AccountId>;
         pub BorrowIdsByAccountId get(borrow_ids_by_account_id) : map hasher(opaque_blake2_256) T::AccountId => Vec<BorrowId>;
         pub AliveBorrowIds get(alive_borrow_ids) : Vec<BorrowId>;
 
         /// on the other hand, an account can have multiple alive loans
-        pub Loans get(loans) : map hasher(opaque_blake2_256) LoanId => Loan<T::AssetId, T::Balance, T::BlockNumber, T::AccountId>;
+        pub Loans get(loans) : map hasher(twox_64_concat) LoanId => Loan<T::AssetId, T::Balance, T::BlockNumber, T::AccountId>;
         pub LoanIdsByAccountId get(loan_ids_by_account_id) : map hasher(opaque_blake2_256) T::AccountId => Vec<LoanId>;
         pub AliveLoanIdsByAccountId get(alive_loan_ids_by_account_id) : map hasher(opaque_blake2_256) T::AccountId => Vec<LoanId>;
         pub AccountIdsWithLiveLoans get(account_ids_with_loans) : Vec<T::AccountId>;
@@ -377,6 +284,49 @@ decl_event!(
 );
 
 impl<T: Trait> Module<T> {
+    /// immutable for RPC
+    pub fn get_borrows(
+        size: Option<u64>,
+        offset: Option<u64>,
+    ) -> Option<Vec<Borrow<T::AssetId, T::Balance, T::BlockNumber, T::AccountId>>> {
+        let offset = offset.unwrap_or(0);
+        let size = size.unwrap_or(10);
+        let mut res = Vec::with_capacity(size as usize);
+
+        for (_, b) in <Borrows<T>>::iter()
+            .skip(offset as usize)
+            .take(size as usize)
+        {
+            res.push(b);
+        }
+
+        if res.len() > 0 {
+            Some(res)
+        } else {
+            None
+        }
+    }
+
+    /// immutable for RPC
+    pub fn get_loans(
+        size: Option<u64>,
+        offset: Option<u64>,
+    ) -> Option<Vec<Loan<T::AssetId, T::Balance, T::BlockNumber, T::AccountId>>> {
+        let offset = offset.unwrap_or(0);
+        let size = size.unwrap_or(10);
+        let mut res = Vec::with_capacity(size as usize);
+
+        for (_, l) in <Loans<T>>::iter().skip(offset as usize).take(size as usize) {
+            res.push(l);
+        }
+
+        if res.len() > 0 {
+            Some(res)
+        } else {
+            None
+        }
+    }
+
     fn generate_borrow_id() -> BorrowId {
         let id = Self::next_borrow_id();
         NextBorrowId::mutate(|v| *v += 1);
