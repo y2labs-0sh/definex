@@ -90,7 +90,7 @@ where
         Balance,
         UncheckedExtrinsic,
     >,
-    C::Api: generic_asset_rpc::GenericAssetRuntimeApi<Block, AssetId>,
+    C::Api: generic_asset_rpc::GenericAssetRuntimeApi<Block, AssetId, Balance, AccountId>,
     C::Api: ls_biding_rpc::LSBidingRuntimeApi<Block, AssetId, Balance, BlockNumber, AccountId>,
     C::Api: BabeApi<Block>,
     <C::Api as sp_api::ApiErrorExt>::Error: fmt::Debug,

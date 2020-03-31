@@ -50,22 +50,6 @@ pub trait Trait: frame_system::Trait + sudo::Trait {
     type Event: From<Event<Self>> + Into<<Self as frame_system::Trait>::Event>;
 }
 
-pub trait Subtrait: frame_system::Trait {
-    type Balance: Parameter
-        + Member
-        + AtLeast32Bit
-        + Default
-        + Copy
-        + MaybeSerializeDeserialize
-        + Debug;
-    type AssetId: Parameter + Member + AtLeast32Bit + Default + Copy;
-}
-
-impl<T: Trait> Subtrait for T {
-    type Balance = T::Balance;
-    type AssetId = T::AssetId;
-}
-
 /// Asset creation options.
 #[derive(Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug)]
 pub struct AssetOptions<Balance: HasCompact, AccountId> {
@@ -408,6 +392,26 @@ impl<T: Trait> Module<T> {
         for (id, name) in <Symbols<T>>::iter() {
             res.push((id, name.to_vec()));
         }
+        if res.len() == 0 {
+            None
+        } else {
+            Some(res)
+        }
+    }
+
+    pub fn whos_all_assets(
+        account_id: T::AccountId,
+    ) -> Option<Vec<(T::AssetId, Vec<u8>, T::Balance)>> {
+        let mut res: Vec<(T::AssetId, Vec<u8>, T::Balance)> = Vec::new();
+        for (id, name) in <Symbols<T>>::iter() {
+            res.push((
+                id,
+                name.to_vec(),
+                <FreeBalance<T>>::get(&id, &account_id)
+                    + <ReservedBalance<T>>::get(&id, &account_id),
+            ));
+        }
+
         if res.len() == 0 {
             None
         } else {

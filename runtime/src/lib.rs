@@ -898,9 +898,13 @@ impl_runtime_apis! {
     }
 
 
-    impl generic_asset_rpc_runtime_api::GenericAssetApi<Block, AssetId> for Runtime {
+    impl generic_asset_rpc_runtime_api::GenericAssetApi<Block, AssetId, Balance, AccountId> for Runtime {
         fn get_symbols_list() -> Option<Vec<(AssetId, Vec<u8>)>> {
             GenericAsset::all_asset_symbols()
+        }
+
+        fn get_user_assets(who: AccountId) -> Option<Vec<(AssetId, Vec<u8>, Balance)>> {
+            GenericAsset::whos_all_assets(who)
         }
     }
 

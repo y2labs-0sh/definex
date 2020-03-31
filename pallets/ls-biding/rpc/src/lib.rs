@@ -48,16 +48,16 @@ pub trait LSBidingApi<BlockHash, AssetId, Balance, BlockNumber, AccountId> {
     #[rpc(name = "lsBiding_borrows")]
     fn borrows(
         &self,
-        size: u64,
-        offset: u64,
+        size: Option<u64>,
+        offset: Option<u64>,
         at: Option<BlockHash>,
     ) -> Result<Vec<Borrow<AssetId, Balance, BlockNumber, AccountId>>>;
 
     #[rpc(name = "lsBiding_loans")]
     fn loans(
         &self,
-        size: u64,
-        offset: u64,
+        size: Option<u64>,
+        offset: Option<u64>,
         at: Option<BlockHash>,
     ) -> Result<Vec<Loan<AssetId, Balance, BlockNumber, AccountId>>>;
 }
@@ -88,14 +88,14 @@ where
 {
     fn borrows(
         &self,
-        size: u64,
-        offset: u64,
+        size: Option<u64>,
+        offset: Option<u64>,
         at: Option<<Block as BlockT>::Hash>,
     ) -> Result<Vec<Borrow<AssetId, Balance, BlockNumber, AccountId>>> {
         let api = self.client.runtime_api();
         let at = BlockId::hash(at.unwrap_or_else(|| self.client.info().best_hash));
         let list = api
-            .get_borrows(&at, Some(size), Some(offset))
+            .get_borrows(&at, size, offset)
             .map_err(|e| RPCError {
                 code: ErrorCode::ServerError(Error::RuntimeError.into()),
                 message: Error::RuntimeError.into(),
@@ -116,14 +116,14 @@ where
 
     fn loans(
         &self,
-        size: u64,
-        offset: u64,
+        size: Option<u64>,
+        offset: Option<u64>,
         at: Option<<Block as BlockT>::Hash>,
     ) -> Result<Vec<Loan<AssetId, Balance, BlockNumber, AccountId>>> {
         let api = self.client.runtime_api();
         let at = BlockId::hash(at.unwrap_or_else(|| self.client.info().best_hash));
         let list = api
-            .get_loans(&at, Some(size), Some(offset))
+            .get_loans(&at, size, offset)
             .map_err(|e| RPCError {
                 code: ErrorCode::ServerError(Error::RuntimeError.into()),
                 message: Error::RuntimeError.into(),
