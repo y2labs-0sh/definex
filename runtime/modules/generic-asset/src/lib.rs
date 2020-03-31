@@ -402,6 +402,19 @@ decl_event!(
 impl<T: Trait> Module<T> {
     // PUBLIC IMMUTABLES
 
+    /// Get a list of all assets' id-symbol pairs
+    pub fn all_asset_symbols() -> Option<Vec<(T::AssetId, Vec<u8>)>> {
+        let mut res: Vec<(T::AssetId, Vec<u8>)> = Vec::new();
+        for (id, name) in <Symbols<T>>::enumerate() {
+            res.push((id, name.to_vec()));
+        }
+        if res.len() == 0 {
+            None
+        } else {
+            Some(res)
+        }
+    }
+
     /// Get an account's total balance of an asset kind.
     pub fn total_balance(asset_id: &T::AssetId, who: &T::AccountId) -> T::Balance {
         Self::free_balance(asset_id, who) + Self::reserved_balance(asset_id, who)

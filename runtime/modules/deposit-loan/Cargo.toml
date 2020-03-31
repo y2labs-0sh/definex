@@ -1,0 +1,118 @@
+[package]
+name = "deposit-loan"
+version = "0.1.0"
+authors = ["Definex Team"]
+edition = "2018"
+
+[features]
+default = ["std"]
+std = [
+    "serde",
+    "codec/std",
+    "sp-std/std",
+    "support/std",
+    "frame-system/std",
+    "sp-runtime/std",
+    "sp-io/std",
+    "sp-core/std",
+    "timestamp/std",
+    "sudo/std",
+    "generic-asset/std",
+    "new-oracle/std",
+]
+
+[dependencies.sp-std]
+default-features = false
+package = "sp-std"
+git = "https://github.com/paritytech/substrate.git"
+rev = "3bc3bb6b385f275e482935f82ae4b8ab5c0e00e8"
+
+[dependencies.serde]
+version = "1.0"
+optional = true
+
+[dependencies.codec]
+default-features = false
+features = ["derive"]
+package = "parity-scale-codec"
+version = "1.0.0"
+
+[dependencies.support]
+default_features = false
+git = "https://github.com/paritytech/substrate.git"
+package = "frame-support"
+rev = "3bc3bb6b385f275e482935f82ae4b8ab5c0e00e8"
+
+[dependencies.frame-system]
+default_features = false
+git = "https://github.com/paritytech/substrate.git"
+package = "frame-system"
+rev = "3bc3bb6b385f275e482935f82ae4b8ab5c0e00e8"
+
+[dependencies.timestamp]
+default_features = false
+git = "https://github.com/paritytech/substrate.git"
+package = "pallet-timestamp"
+rev = "3bc3bb6b385f275e482935f82ae4b8ab5c0e00e8"
+
+[dependencies.sp-runtime]
+default_features = false
+git = "https://github.com/paritytech/substrate.git"
+package = "sp-runtime"
+rev = "3bc3bb6b385f275e482935f82ae4b8ab5c0e00e8"
+
+[dependencies.sp-io]
+default_features = false
+git = "https://github.com/paritytech/substrate.git"
+package = "sp-io"
+rev = "3bc3bb6b385f275e482935f82ae4b8ab5c0e00e8"
+
+[dependencies.sudo]
+default_features = false
+git = "https://github.com/paritytech/substrate.git"
+package = "pallet-sudo"
+rev = "3bc3bb6b385f275e482935f82ae4b8ab5c0e00e8"
+
+[dependencies.sp-core]
+default_features = false
+git = "https://github.com/paritytech/substrate.git"
+package = "sp-core"
+rev = "3bc3bb6b385f275e482935f82ae4b8ab5c0e00e8"
+
+[dev-dependencies.sp-core]
+git = "https://github.com/paritytech/substrate.git"
+package = "sp-core"
+rev = "3bc3bb6b385f275e482935f82ae4b8ab5c0e00e8"
+
+[dev-dependencies.sudo]
+git = "https://github.com/paritytech/substrate.git"
+package = "pallet-sudo"
+rev = "3bc3bb6b385f275e482935f82ae4b8ab5c0e00e8"
+
+[dev-dependencies.transaction_payment]
+git = "https://github.com/paritytech/substrate.git"
+package = "pallet-transaction-payment"
+rev = "3bc3bb6b385f275e482935f82ae4b8ab5c0e00e8"
+
+[dev-dependencies.balances]
+git = "https://github.com/paritytech/substrate.git"
+package = "pallet-balances"
+rev = "3bc3bb6b385f275e482935f82ae4b8ab5c0e00e8"
+
+[dev-dependencies.collective]
+git = "https://github.com/paritytech/substrate.git"
+package = "pallet-collective"
+rev = "3bc3bb6b385f275e482935f82ae4b8ab5c0e00e8"
+
+[dev-dependencies.indices]
+git = "https://github.com/paritytech/substrate.git"
+package = "pallet-indices"
+rev = "3bc3bb6b385f275e482935f82ae4b8ab5c0e00e8"
+
+[dependencies.generic-asset]
+default-features = false
+path = "../generic-asset"
+
+[dependencies.new-oracle]
+default-features = false
+path = "../new-oracle"

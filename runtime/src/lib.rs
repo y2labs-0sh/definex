@@ -27,7 +27,7 @@ use frame_support::{
 };
 use frame_system::offchain::TransactionSubmitter;
 pub use node_primitives::{AccountId, Signature};
-use node_primitives::{AccountIndex, Balance, BlockNumber, Hash, Index, Moment};
+use node_primitives::{AccountIndex, AssetId, Balance, BlockNumber, Hash, Index, Moment};
 use pallet_contracts_rpc_runtime_api::ContractExecResult;
 use pallet_grandpa::fg_primitives;
 use pallet_grandpa::AuthorityList as GrandpaAuthorityList;
@@ -622,7 +622,7 @@ impl pallet_vesting::Trait for Runtime {
 impl generic_asset::Trait for Runtime {
     type Event = Event;
     type Balance = Balance;
-    type AssetId = u32;
+    type AssetId = AssetId;
 }
 
 impl bridge::Trait for Runtime {
@@ -643,6 +643,10 @@ parameter_types! {
 impl ls_biding::Trait for Runtime {
     type Event = Event;
     type Days = DaysInBlockNumber;
+}
+
+impl deposit_loan::Trait for Runtime {
+    type Event = Event;
 }
 
 // type OracleCollective = pallet_collective::Instance3;
@@ -752,15 +756,16 @@ construct_runtime!(
 		    Recovery: pallet_recovery::{Module, Call, Storage, Event<T>},
 		    Vesting: pallet_vesting::{Module, Call, Storage, Event<T>, Config<T>},
         GenericAsset: generic_asset::{Module, Call, Storage, Event<T>, Config<T>},
-        // Saving: saving::{Module, Call, Storage, Event<T>, Config<T>},
-        // Loan: loan::{Module, Call, Storage, Event<T>, Config<T>},
         LSBiding: ls_biding::{Module, Call, Storage, Event<T>, Config<T>},
         Bridge: bridge::{Module, Call, Storage, Event<T>, Config<T>},
+        DepositLoan: deposit_loan::{Module, Call, Storage, Event<T>, Config<T>},
+        NewOracle: new_oracle::{Module, Call, Storage, Config<T>, Event<T>, ValidateUnsigned},
         // Price: price::{Module, Call, Storage, Event<T>},
         // Oracle: oracle::{Module, Call, Storage, Event<T>},
         // OracleMembers: pallet_collective::<Instance3>::{Module, Call, Storage, Origin<T>, Event<T>},
         // BTCBridge: btc_bridge::{Module, Call, Storage, Config<T>, Event<T>},
-        NewOracle: new_oracle::{Module, Call, Storage, Config<T>, Event<T>, ValidateUnsigned},
+        // Saving: saving::{Module, Call, Storage, Event<T>, Config<T>},
+        // Loan: loan::{Module, Call, Storage, Event<T>, Config<T>},
 	  }
 );
 
@@ -940,6 +945,12 @@ impl_runtime_apis! {
     > for Runtime {
         fn query_info(uxt: UncheckedExtrinsic, len: u32) -> RuntimeDispatchInfo<Balance> {
             TransactionPayment::query_info(uxt, len)
+        }
+    }
+
+    impl generic_asset_rpc_runtime_api::GenericAssetApi<Block, AssetId> for Runtime {
+        fn get_symbols_list() -> Option<Vec<(AssetId, Vec<u8>)>> {
+            GenericAsset::all_asset_symbols()
         }
     }
 

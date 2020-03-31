@@ -380,9 +380,11 @@ std = [
     'pallet-recovery/std',
     'pallet-vesting/std',
     'generic-asset/std',
+    'generic-asset-rpc-runtime-api/std',
     'bridge/std',
     'new-oracle/std',
     'ls-biding/std',
+    'deposit-loan/std',
 ]
 
 [package]
@@ -397,6 +399,10 @@ version = '2.0.0'
 default-features = false
 path = "modules/generic-asset"
 
+[dependencies.generic-asset-rpc-runtime-api]
+default-features = false
+path = "modules/generic-asset/rpc/runtime-api"
+
 [dependencies.bridge]
 default-features = false
 path = "modules/bridge"
@@ -408,3 +414,7 @@ path = "modules/new-oracle"
 [dependencies.ls-biding]
 default-features = false
 path = "modules/ls-biding"
+
+[dependencies.deposit-loan]
+default-features = false
+path = "modules/deposit-loan"

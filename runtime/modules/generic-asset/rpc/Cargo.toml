@@ -1,0 +1,22 @@
+[package]
+name = "generic-asset-rpc"
+version = "0.1.0"
+authors = ["Kyli Bing <kylidboy@gmail.com>"]
+edition = "2018"
+license = "GPL-3.0"
+
+[dependencies]
+codec = { package = "parity-scale-codec", version = "1.2.0" }
+jsonrpc-core = "14.0.3"
+jsonrpc-core-client = "14.0.3"
+jsonrpc-derive = "14.0.3"
+sp-blockchain = { git = "https://github.com/paritytech/substrate.git", rev = "3bc3bb6b385f275e482935f82ae4b8ab5c0e00e8" }
+sp-core = { git = "https://github.com/paritytech/substrate.git", rev = "3bc3bb6b385f275e482935f82ae4b8ab5c0e00e8" }
+sp-rpc = { git = "https://github.com/paritytech/substrate.git", rev = "3bc3bb6b385f275e482935f82ae4b8ab5c0e00e8" }
+serde = { version = "1.0.101", features = ["derive"] }
+sp-runtime = { git = "https://github.com/paritytech/substrate.git", rev = "3bc3bb6b385f275e482935f82ae4b8ab5c0e00e8" }
+sp-api = { git = "https://github.com/paritytech/substrate.git", rev = "3bc3bb6b385f275e482935f82ae4b8ab5c0e00e8" }
+generic-asset-rpc-runtime-api = { path = "./runtime-api" }
+
+[dev-dependencies]
+serde_json = "1.0.41"

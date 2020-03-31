@@ -22,9 +22,10 @@ use node_runtime::constants::currency::*;
 use node_runtime::Block;
 use node_runtime::{
     AuthorityDiscoveryConfig, BabeConfig, BalancesConfig, BridgeConfig, ContractsConfig,
-    CouncilConfig, DemocracyConfig, GenericAssetConfig, GrandpaConfig, ImOnlineConfig,
-    IndicesConfig, LSBidingConfig, NewOracleConfig, SessionConfig, SessionKeys, SocietyConfig,
-    StakerStatus, StakingConfig, SudoConfig, SystemConfig, TechnicalCommitteeConfig, WASM_BINARY,
+    CouncilConfig, DemocracyConfig, DepositLoanConfig, GenericAssetConfig, GrandpaConfig,
+    ImOnlineConfig, IndicesConfig, LSBidingConfig, NewOracleConfig, SessionConfig, SessionKeys,
+    SocietyConfig, StakerStatus, StakingConfig, SudoConfig, SystemConfig, TechnicalCommitteeConfig,
+    WASM_BINARY,
 };
 use pallet_im_online::sr25519::AuthorityId as ImOnlineId;
 use sc_chain_spec::ChainSpecExtension;
@@ -411,6 +412,30 @@ pub fn testnet_genesis(
                 node_runtime::bridge::Auth::All,
             )],
             pending_withdraw_vault: get_account_id_from_seed::<sr25519::Public>("withdraw vault"),
+        }),
+        deposit_loan: Some(DepositLoanConfig {
+            collection_asset_id: 0,
+            profit_asset_id: 0,
+            loan_interest_rate_current: 0,
+            collateral_asset_id: 1,
+            loan_asset_id: 0,
+            global_ltv_limit: 6666_6667,
+            global_liquidation_threshold: 1_0000_0000,
+            global_warning_threshold: 5000_0000,
+            next_loan_id: 0,
+
+            penalty_rate: 50,
+            minimum_collateral: 0,
+            liquidation_penalty: 1300,
+            collection_account_id: get_account_id_from_seed::<sr25519::Public>(
+                "collection_account_id",
+            ),
+            liquidation_account: get_account_id_from_seed::<sr25519::Public>("liquidation_account"),
+            pawn_shop: get_account_id_from_seed::<sr25519::Public>("pawn_shop"),
+            profit_pool: get_account_id_from_seed::<sr25519::Public>("profit_pool"),
+            market_dtoken: 0,
+            total_dtoken: 0,
+            saving_interest_rate: 0,
         }),
         // btc_bridge: Some(BTCBridgeConfig {
         //     key_material: [

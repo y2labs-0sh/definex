@@ -1031,6 +1031,28 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "11c0346158a19b3627234e15596f5e465c360fcdb97d817bcb255e0510f5a788"
 
 [[package]]
+name = "deposit-loan"
+version = "0.1.0"
+dependencies = [
+ "frame-support",
+ "frame-system",
+ "generic-asset",
+ "new-oracle",
+ "pallet-balances",
+ "pallet-collective",
+ "pallet-indices",
+ "pallet-sudo",
+ "pallet-timestamp",
+ "pallet-transaction-payment",
+ "parity-scale-codec",
+ "serde",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
 name = "derive_more"
 version = "0.99.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1741,6 +1763,34 @@ dependencies = [
  "serde",
  "sp-core",
  "sp-io",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
+name = "generic-asset-rpc"
+version = "0.1.0"
+dependencies = [
+ "generic-asset-rpc-runtime-api",
+ "jsonrpc-core",
+ "jsonrpc-core-client",
+ "jsonrpc-derive",
+ "parity-scale-codec",
+ "serde",
+ "serde_json",
+ "sp-api",
+ "sp-blockchain",
+ "sp-core",
+ "sp-rpc",
+ "sp-runtime",
+]
+
+[[package]]
+name = "generic-asset-rpc-runtime-api"
+version = "0.1.0"
+dependencies = [
+ "parity-scale-codec",
+ "sp-api",
  "sp-runtime",
  "sp-std",
 ]
@@ -3396,6 +3446,7 @@ dependencies = [
 name = "node-rpc"
 version = "2.0.0"
 dependencies = [
+ "generic-asset-rpc",
  "jsonrpc-core",
  "node-primitives",
  "node-runtime",
@@ -3433,12 +3484,14 @@ name = "node-runtime"
 version = "2.0.0"
 dependencies = [
  "bridge",
+ "deposit-loan",
  "frame-benchmarking",
  "frame-executive",
  "frame-support",
  "frame-system",
  "frame-system-rpc-runtime-api",
  "generic-asset",
+ "generic-asset-rpc-runtime-api",
  "integer-sqrt",
  "ls-biding",
  "new-oracle",
