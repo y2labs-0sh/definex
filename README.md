@@ -1,4 +1,4 @@
-## most of the logic resides in runtime/modules/ls-biding
+## most of the P2P logic resides in runtime/modules/ls-biding
 
 This module is meant for Web3 grant.
 
@@ -12,7 +12,7 @@ Basically, there are 3 major roles:
 
     3. liquidator: those who keep monitoring if there is any loan with a ltv lower than the 'LTVLiquidate'. By doing this, they would be rewarded.
 
-## price if fed through offchain worker
+## price is fed through offchain worker
 
 runtime/modules/new-oracle
 
