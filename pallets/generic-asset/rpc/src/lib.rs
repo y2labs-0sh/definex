@@ -1,40 +1,44 @@
 use std::sync::Arc;
 
 use codec::Codec;
-use jsonrpc_core::{Error as RPCError, ErrorCode, Result};
+use jsonrpc_core::{Error as RPCError, ErrorCode, Result as RPCResult};
 use jsonrpc_derive::rpc;
-use serde::{Deserialize, Serialize};
 use sp_api::ProvideRuntimeApi;
 use sp_blockchain::HeaderBackend;
-use sp_core::{Bytes, H256};
-use sp_rpc::number;
-use sp_runtime::{
-    generic::BlockId,
-    traits::{Block as BlockT, Header as HeaderT, MaybeDisplay, MaybeFromStr},
-};
+use sp_runtime::{generic::BlockId, traits::Block as BlockT};
 
 pub use self::gen_client::Client as GenericAssetClient;
 pub use generic_asset_rpc_runtime_api::{
     self as runtime_api, GenericAssetApi as GenericAssetRuntimeApi,
 };
 
-#[derive(Eq, PartialEq, Default, Serialize, Deserialize, Debug)]
-#[cfg_attr(feature = "std", serde(rename_all = "camelCase"))]
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
+
+#[derive(Eq, PartialEq, Default, Debug, Serialize, Deserialize)]
 pub struct UserAssets<AssetId, Balance> {
     pub asset_id: AssetId,
     pub symbol: String,
 
-    #[cfg_attr(
-        feature = "std",
-        serde(bound(serialize = "Balance: std::fmt::Display"))
-    )]
-    #[cfg_attr(feature = "std", serde(serialize_with = "serialize_as_string"))]
-    #[cfg_attr(
-        feature = "std",
-        serde(bound(deserialize = "Balance: std::str::FromStr"))
-    )]
-    #[cfg_attr(feature = "std", serde(deserialize_with = "deserialize_from_string"))]
+    #[serde(bound(serialize = "Balance: std::fmt::Display"))]
+    #[serde(serialize_with = "serialize_as_string")]
+    #[serde(bound(deserialize = "Balance: std::str::FromStr"))]
+    #[serde(deserialize_with = "deserialize_from_string")]
     pub balance: Balance,
+}
+
+fn serialize_as_string<S: Serializer, T: std::fmt::Display>(
+    t: &T,
+    serializer: S,
+) -> Result<S::Ok, S::Error> {
+    serializer.serialize_str(&t.to_string())
+}
+
+fn deserialize_from_string<'de, D: Deserializer<'de>, T: std::str::FromStr>(
+    deserializer: D,
+) -> Result<T, D::Error> {
+    let s = String::deserialize(deserializer)?;
+    s.parse::<T>()
+        .map_err(|_| serde::de::Error::custom("Parse from string failed"))
 }
 
 pub enum Error {
@@ -60,16 +64,16 @@ impl From<Error> for String {
 
 /// Generic Asset RPC methods
 #[rpc]
-pub trait GenericAssetApi<BlockHash, AssetId, Balance, AccountId> {
+pub trait GenericAssetApi<BlockHash, AccountId, SymbolsResponse, AssetsResponse> {
     #[rpc(name = "genericAsset_symbolsList")]
-    fn get_symbols_list(&self, at: Option<BlockHash>) -> Result<Vec<(AssetId, String)>>;
+    fn get_symbols_list(&self, at: Option<BlockHash>) -> RPCResult<Vec<SymbolsResponse>>;
 
     #[rpc(name = "genericAsset_userAssets")]
     fn get_user_assets(
         &self,
         who: AccountId,
         at: Option<BlockHash>,
-    ) -> Result<Vec<UserAssets<AssetId, Balance>>>;
+    ) -> RPCResult<Vec<AssetsResponse>>;
 }
 
 pub struct GenericAsset<C, B> {
@@ -85,19 +89,24 @@ impl<C, B> GenericAsset<C, B> {
     }
 }
 impl<C, Block, AssetId, Balance, AccountId>
-    GenericAssetApi<<Block as BlockT>::Hash, AssetId, Balance, AccountId> for GenericAsset<C, Block>
+    GenericAssetApi<
+        <Block as BlockT>::Hash,
+        AccountId,
+        (AssetId, String),
+        UserAssets<AssetId, Balance>,
+    > for GenericAsset<C, Block>
 where
     Block: BlockT,
     C: Send + Sync + 'static + ProvideRuntimeApi<Block> + HeaderBackend<Block>,
     C::Api: GenericAssetRuntimeApi<Block, AssetId, Balance, AccountId>,
-    AssetId: Codec + MaybeDisplay + MaybeFromStr + Copy + Clone + std::fmt::Debug,
-    Balance: Codec + MaybeDisplay + MaybeFromStr + Copy + Clone + std::fmt::Debug,
-    AccountId: Codec + Clone + MaybeDisplay,
+    AssetId: Codec + Copy + Clone + std::str::FromStr + std::fmt::Display,
+    Balance: Codec + Copy + Clone + std::str::FromStr + std::fmt::Display,
+    AccountId: Codec + Clone + std::fmt::Display,
 {
     fn get_symbols_list(
         &self,
         at: Option<<Block as BlockT>::Hash>,
-    ) -> Result<Vec<(AssetId, String)>> {
+    ) -> RPCResult<Vec<(AssetId, String)>> {
         let api = self.client.runtime_api();
         let at = BlockId::hash(at.unwrap_or_else(|| self.client.info().best_hash));
         let list = api
@@ -131,7 +140,7 @@ where
         &self,
         who: AccountId,
         at: Option<<Block as BlockT>::Hash>,
-    ) -> Result<Vec<UserAssets<AssetId, Balance>>> {
+    ) -> RPCResult<Vec<UserAssets<AssetId, Balance>>> {
         let api = self.client.runtime_api();
         let at = BlockId::hash(at.unwrap_or_else(|| self.client.info().best_hash));
         let list = api.get_user_assets(&at, who).map_err(|e| RPCError {
@@ -150,7 +159,6 @@ where
                         symbol: s,
                     });
                 }
-                dbg!(&res);
                 return Ok(res);
             }
             None => {

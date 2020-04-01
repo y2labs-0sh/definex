@@ -7,8 +7,8 @@ use sp_std::vec::Vec;
 
 sp_api::decl_runtime_apis! {
     pub trait GenericAssetApi<AssetId, Balance, AccountId> where
-        AssetId: Codec + MaybeDisplay + MaybeFromStr + Copy,
-        Balance: Codec + MaybeDisplay + MaybeFromStr + Copy,
+        AssetId: Codec + MaybeDisplay + MaybeFromStr,
+        Balance: Codec + MaybeDisplay + MaybeFromStr,
         AccountId: Codec + Clone + MaybeDisplay,
     {
         fn get_symbols_list() -> Option<Vec<(AssetId, Vec<u8>)>>;

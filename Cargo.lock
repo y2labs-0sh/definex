@@ -1759,6 +1759,7 @@ name = "generic-asset-rpc-runtime-api"
 version = "0.1.0"
 dependencies = [
  "parity-scale-codec",
+ "serde",
  "sp-api",
  "sp-runtime",
  "sp-std",

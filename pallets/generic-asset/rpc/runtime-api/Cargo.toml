@@ -10,12 +10,14 @@ sp-api = { default-features = false, git = "https://github.com/paritytech/substr
 codec = { package = "parity-scale-codec", version = "1.2.0", default-features = false, features = ["derive"] }
 sp-std = { default-features = false, git = "https://github.com/paritytech/substrate.git", package = "sp-std", rev = "6ce091737dc7f114dd420f8b879f8a467c1d501b" }
 sp-runtime = { default-features = false, git = "https://github.com/paritytech/substrate.git", package = "sp-runtime", rev = "6ce091737dc7f114dd420f8b879f8a467c1d501b" }
+serde = { version = "1.0.101", optional = true, features = ["derive"] }
 
 [features]
 default = ["std"]
 std = [
-"sp-api/std",
-"codec/std",
-"sp-std/std",
-"sp-runtime/std",
+    "serde",
+    "sp-api/std",
+    "codec/std",
+    "sp-std/std",
+    "sp-runtime/std",
 ]
