@@ -1,5 +1,5 @@
 [package]
-name = "ls-biding-rpc"
+name = "p2p-rpc"
 version = "0.1.0"
 authors = ["Kyli Bing <kylidboy@gmail.com>"]
 edition = "2018"
@@ -15,6 +15,6 @@ sp-core = { git = "https://github.com/paritytech/substrate.git", rev = "6ce09173
 sp-rpc = { git = "https://github.com/paritytech/substrate.git", rev = "6ce091737dc7f114dd420f8b879f8a467c1d501b" }
 sp-runtime = { git = "https://github.com/paritytech/substrate.git", rev = "6ce091737dc7f114dd420f8b879f8a467c1d501b" }
 sp-api = { git = "https://github.com/paritytech/substrate.git", rev = "6ce091737dc7f114dd420f8b879f8a467c1d501b" }
-ls-biding-rpc-runtime-api = { path = "./runtime-api" }
-ls-biding-primitives = { path = "../primitives" }
+p2p-rpc-runtime-api = { path = "./runtime-api" }
+p2p-primitives = { path = "../primitives" }
 serde = { version = "1.0.104", features = [ "derive" ] }

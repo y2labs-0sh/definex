@@ -91,15 +91,17 @@ where
         UncheckedExtrinsic,
     >,
     C::Api: generic_asset_rpc::GenericAssetRuntimeApi<Block, AssetId, Balance, AccountId>,
-    C::Api: ls_biding_rpc::LSBidingRuntimeApi<Block, AssetId, Balance, BlockNumber, AccountId>,
+    C::Api: p2p_rpc::P2PRuntimeApi<Block, AssetId, Balance, BlockNumber, AccountId>,
+    C::Api: deposit_loan_rpc::DepositLoanRuntimeApi<Block, AccountId, Balance>,
     C::Api: BabeApi<Block>,
     <C::Api as sp_api::ApiErrorExt>::Error: fmt::Debug,
     P: TransactionPool + 'static,
     M: jsonrpc_core::Metadata + Default,
     SC: SelectChain<Block> + 'static,
 {
+    use deposit_loan_rpc::{DepositLoan, DepositLoanApi};
     use generic_asset_rpc::{GenericAsset, GenericAssetApi};
-    use ls_biding_rpc::{LSBiding, LSBidingApi};
+    use p2p_rpc::{P2PApi, P2P};
     use pallet_contracts_rpc::{Contracts, ContractsApi};
     use pallet_transaction_payment_rpc::{TransactionPayment, TransactionPaymentApi};
     use substrate_frame_rpc_system::{FullSystem, SystemApi};
@@ -131,7 +133,10 @@ where
     io.extend_with(GenericAssetApi::to_delegate(GenericAsset::new(
         client.clone(),
     )));
-    io.extend_with(LSBidingApi::to_delegate(LSBiding::new(client.clone())));
+    io.extend_with(P2PApi::to_delegate(P2P::new(client.clone())));
+    io.extend_with(DepositLoanApi::to_delegate(DepositLoan::new(
+        client.clone(),
+    )));
     io.extend_with(sc_consensus_babe_rpc::BabeApi::to_delegate(
         BabeRPCHandler::new(
             client,

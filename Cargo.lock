@@ -990,6 +990,69 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "11c0346158a19b3627234e15596f5e465c360fcdb97d817bcb255e0510f5a788"
 
 [[package]]
+name = "deposit-loan"
+version = "0.1.0"
+dependencies = [
+ "deposit-loan-primitives",
+ "frame-support",
+ "frame-system",
+ "generic-asset",
+ "new-oracle",
+ "pallet-balances",
+ "pallet-collective",
+ "pallet-indices",
+ "pallet-sudo",
+ "pallet-timestamp",
+ "pallet-transaction-payment",
+ "parity-scale-codec",
+ "serde",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
+name = "deposit-loan-primitives"
+version = "0.0.1"
+dependencies = [
+ "frame-support",
+ "parity-scale-codec",
+ "serde",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
+name = "deposit-loan-rpc"
+version = "0.1.0"
+dependencies = [
+ "deposit-loan-primitives",
+ "deposit-loan-rpc-runtime-api",
+ "jsonrpc-core",
+ "jsonrpc-core-client",
+ "jsonrpc-derive",
+ "parity-scale-codec",
+ "serde",
+ "sp-api",
+ "sp-blockchain",
+ "sp-core",
+ "sp-rpc",
+ "sp-runtime",
+]
+
+[[package]]
+name = "deposit-loan-rpc-runtime-api"
+version = "0.0.1"
+dependencies = [
+ "deposit-loan-primitives",
+ "parity-scale-codec",
+ "sp-api",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
 name = "derive_more"
 version = "0.99.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3030,68 +3093,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "ls-biding"
-version = "0.1.0"
-dependencies = [
- "frame-support",
- "frame-system",
- "generic-asset",
- "hex-literal",
- "ls-biding-primitives",
- "new-oracle",
- "pallet-balances",
- "pallet-sudo",
- "pallet-timestamp",
- "parity-scale-codec",
- "serde",
- "sp-core",
- "sp-io",
- "sp-runtime",
- "sp-std",
- "sp-version",
-]
-
-[[package]]
-name = "ls-biding-primitives"
-version = "0.0.1"
-dependencies = [
- "frame-support",
- "parity-scale-codec",
- "serde",
- "sp-runtime",
- "sp-std",
-]
-
-[[package]]
-name = "ls-biding-rpc"
-version = "0.1.0"
-dependencies = [
- "jsonrpc-core",
- "jsonrpc-core-client",
- "jsonrpc-derive",
- "ls-biding-primitives",
- "ls-biding-rpc-runtime-api",
- "parity-scale-codec",
- "serde",
- "sp-api",
- "sp-blockchain",
- "sp-core",
- "sp-rpc",
- "sp-runtime",
-]
-
-[[package]]
-name = "ls-biding-rpc-runtime-api"
-version = "0.0.1"
-dependencies = [
- "ls-biding-primitives",
- "parity-scale-codec",
- "sp-api",
- "sp-runtime",
- "sp-std",
-]
-
-[[package]]
 name = "mach"
 version = "0.2.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3485,11 +3486,12 @@ dependencies = [
 name = "node-rpc"
 version = "2.0.0-alpha.5"
 dependencies = [
+ "deposit-loan-rpc",
  "generic-asset-rpc",
  "jsonrpc-core",
- "ls-biding-rpc",
  "node-primitives",
  "node-runtime",
+ "p2p-rpc",
  "pallet-contracts-rpc",
  "pallet-transaction-payment-rpc",
  "sc-client",
@@ -3524,6 +3526,9 @@ name = "node-runtime"
 version = "2.0.0-alpha.5"
 dependencies = [
  "bridge",
+ "deposit-loan",
+ "deposit-loan-primitives",
+ "deposit-loan-rpc-runtime-api",
  "frame-benchmarking",
  "frame-executive",
  "frame-support",
@@ -3532,11 +3537,11 @@ dependencies = [
  "generic-asset",
  "generic-asset-rpc-runtime-api",
  "integer-sqrt",
- "ls-biding",
- "ls-biding-primitives",
- "ls-biding-rpc-runtime-api",
  "new-oracle",
  "node-primitives",
+ "p2p",
+ "p2p-primitives",
+ "p2p-rpc-runtime-api",
  "pallet-authority-discovery",
  "pallet-authorship",
  "pallet-babe",
@@ -3841,6 +3846,68 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6ff55baddef9e4ad00f88b6c743a2a8062d4c6ade126c2a528644b8e444d52ce"
 dependencies = [
  "stable_deref_trait",
+]
+
+[[package]]
+name = "p2p"
+version = "0.1.0"
+dependencies = [
+ "frame-support",
+ "frame-system",
+ "generic-asset",
+ "hex-literal",
+ "new-oracle",
+ "p2p-primitives",
+ "pallet-balances",
+ "pallet-sudo",
+ "pallet-timestamp",
+ "parity-scale-codec",
+ "serde",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+ "sp-version",
+]
+
+[[package]]
+name = "p2p-primitives"
+version = "0.0.1"
+dependencies = [
+ "frame-support",
+ "parity-scale-codec",
+ "serde",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
+name = "p2p-rpc"
+version = "0.1.0"
+dependencies = [
+ "jsonrpc-core",
+ "jsonrpc-core-client",
+ "jsonrpc-derive",
+ "p2p-primitives",
+ "p2p-rpc-runtime-api",
+ "parity-scale-codec",
+ "serde",
+ "sp-api",
+ "sp-blockchain",
+ "sp-core",
+ "sp-rpc",
+ "sp-runtime",
+]
+
+[[package]]
+name = "p2p-rpc-runtime-api"
+version = "0.0.1"
+dependencies = [
+ "p2p-primitives",
+ "parity-scale-codec",
+ "sp-api",
+ "sp-runtime",
+ "sp-std",
 ]
 
 [[package]]

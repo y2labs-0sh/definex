@@ -53,7 +53,7 @@ use sp_version::RuntimeVersion;
 
 pub use bridge;
 pub use frame_support::StorageValue;
-pub use ls_biding::TradingPair;
+pub use p2p::TradingPair;
 pub use pallet_balances::Call as BalancesCall;
 pub use pallet_contracts::Gas;
 pub use pallet_staking::StakerStatus;
@@ -661,9 +661,13 @@ impl bridge::Trait for Runtime {
 parameter_types! {
     pub const DaysInBlockNumber: BlockNumber = 1 * DAYS;
 }
-impl ls_biding::Trait for Runtime {
+impl p2p::Trait for Runtime {
     type Event = Event;
     type Days = DaysInBlockNumber;
+}
+
+impl deposit_loan::Trait for Runtime {
+    type Event = Event;
 }
 
 type SubmitOracleTransaction =
@@ -681,6 +685,7 @@ impl new_oracle::Trait for Runtime {
     type AggregateInterval = AggregateInterval;
     type PriceInUSDT = u64;
 }
+
 construct_runtime!(
 	pub enum Runtime where
 		Block = Block,
@@ -715,10 +720,11 @@ construct_runtime!(
 		Society: pallet_society::{Module, Call, Storage, Event<T>, Config<T>},
 		Recovery: pallet_recovery::{Module, Call, Storage, Event<T>},
 		Vesting: pallet_vesting::{Module, Call, Storage, Event<T>, Config<T>},
-      GenericAsset: generic_asset::{Module, Call, Storage, Event<T>, Config<T>},
-      LSBiding: ls_biding::{Module, Call, Storage, Event<T>, Config<T>},
-      Bridge: bridge::{Module, Call, Storage, Event<T>, Config<T>},
-      NewOracle: new_oracle::{Module, Call, Storage, Config<T>, Event<T>, ValidateUnsigned},
+        GenericAsset: generic_asset::{Module, Call, Storage, Event<T>, Config<T>},
+        PToP: p2p::{Module, Call, Storage, Event<T>, Config<T>},
+        Bridge: bridge::{Module, Call, Storage, Event<T>, Config<T>},
+        NewOracle: new_oracle::{Module, Call, Storage, Config<T>, Event<T>, ValidateUnsigned},
+		DepositLoan: deposit_loan::{Module, Call, Storage, Event<T>, Config<T>},
 	}
 );
 
@@ -908,13 +914,19 @@ impl_runtime_apis! {
         }
     }
 
-    impl ls_biding_rpc_runtime_api::LSBidingApi<Block, AssetId, Balance, BlockNumber, AccountId> for Runtime {
-        fn get_borrows(size: Option<u64>, offset: Option<u64>) -> Option<Vec<ls_biding_primitives::Borrow<AssetId, Balance, BlockNumber, AccountId>>> {
-            LSBiding::get_borrows(size, offset)
+    impl p2p_rpc_runtime_api::P2PApi<Block, AssetId, Balance, BlockNumber, AccountId> for Runtime {
+        fn get_borrows(size: Option<u64>, offset: Option<u64>) -> Option<Vec<p2p_primitives::P2PBorrow<AssetId, Balance, BlockNumber, AccountId>>> {
+            PToP::get_borrows(size, offset)
         }
 
-        fn get_loans(size: Option<u64>, offset: Option<u64>) -> Option<Vec<ls_biding_primitives::Loan<AssetId, Balance, BlockNumber, AccountId>>> {
-            LSBiding::get_loans(size, offset)
+        fn get_loans(size: Option<u64>, offset: Option<u64>) -> Option<Vec<p2p_primitives::P2PLoan<AssetId, Balance, BlockNumber, AccountId>>> {
+            PToP::get_loans(size, offset)
+        }
+    }
+
+    impl deposit_loan_rpc_runtime_api::DepositLoanApi<Block, AccountId, Balance> for Runtime {
+        fn get_loans(size: Option<u64>, offset: Option<u64>) -> Option<Vec<deposit_loan_primitives::Loan<AccountId, Balance>>> {
+            DepositLoan::get_loans(size, offset)
         }
     }
 

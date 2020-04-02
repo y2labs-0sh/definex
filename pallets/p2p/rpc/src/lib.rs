@@ -13,10 +13,10 @@ use sp_runtime::{
     traits::{Block as BlockT, Header as HeaderT, MaybeDisplay, MaybeFromStr},
 };
 
-pub use self::gen_client::Client as LSBidingClient;
-pub use ls_biding_rpc_runtime_api::{self as runtime_api, LSBidingApi as LSBidingRuntimeApi};
+pub use self::gen_client::Client as P2PClient;
+pub use p2p_rpc_runtime_api::{self as runtime_api, P2PApi as P2PRuntimeApi};
 
-use ls_biding_primitives::{Borrow, Loan};
+use p2p_primitives::{P2PBorrow, P2PLoan};
 
 pub enum Error {
     RuntimeError,
@@ -42,45 +42,44 @@ impl From<Error> for String {
     }
 }
 
-/// LSBiding RPC methods
+/// P2P RPC methods
 #[rpc]
-pub trait LSBidingApi<BlockHash, AssetId, Balance, BlockNumber, AccountId> {
-    #[rpc(name = "lsBiding_borrows")]
+pub trait P2PApi<BlockHash, AssetId, Balance, BlockNumber, AccountId> {
+    #[rpc(name = "pToP_borrows")]
     fn borrows(
         &self,
         size: Option<u64>,
         offset: Option<u64>,
         at: Option<BlockHash>,
-    ) -> Result<Vec<Borrow<AssetId, Balance, BlockNumber, AccountId>>>;
+    ) -> Result<Vec<P2PBorrow<AssetId, Balance, BlockNumber, AccountId>>>;
 
-    #[rpc(name = "lsBiding_loans")]
+    #[rpc(name = "pToP_loans")]
     fn loans(
         &self,
         size: Option<u64>,
         offset: Option<u64>,
         at: Option<BlockHash>,
-    ) -> Result<Vec<Loan<AssetId, Balance, BlockNumber, AccountId>>>;
+    ) -> Result<Vec<P2PLoan<AssetId, Balance, BlockNumber, AccountId>>>;
 }
 
-pub struct LSBiding<C, B> {
+pub struct P2P<C, B> {
     client: Arc<C>,
     _marker: std::marker::PhantomData<B>,
 }
-impl<C, B> LSBiding<C, B> {
+impl<C, B> P2P<C, B> {
     pub fn new(client: Arc<C>) -> Self {
-        LSBiding {
+        P2P {
             client,
             _marker: Default::default(),
         }
     }
 }
 impl<C, Block, AssetId, Balance, BlockNumber, AccountId>
-    LSBidingApi<<Block as BlockT>::Hash, AssetId, Balance, BlockNumber, AccountId>
-    for LSBiding<C, Block>
+    P2PApi<<Block as BlockT>::Hash, AssetId, Balance, BlockNumber, AccountId> for P2P<C, Block>
 where
     Block: BlockT,
     C: Send + Sync + 'static + ProvideRuntimeApi<Block> + HeaderBackend<Block>,
-    C::Api: LSBidingRuntimeApi<Block, AssetId, Balance, BlockNumber, AccountId>,
+    C::Api: P2PRuntimeApi<Block, AssetId, Balance, BlockNumber, AccountId>,
     AssetId: Codec + Copy + Clone,
     Balance: Codec + Copy + Clone,
     BlockNumber: Codec + Copy + Clone,
@@ -91,7 +90,7 @@ where
         size: Option<u64>,
         offset: Option<u64>,
         at: Option<<Block as BlockT>::Hash>,
-    ) -> Result<Vec<Borrow<AssetId, Balance, BlockNumber, AccountId>>> {
+    ) -> Result<Vec<P2PBorrow<AssetId, Balance, BlockNumber, AccountId>>> {
         let api = self.client.runtime_api();
         let at = BlockId::hash(at.unwrap_or_else(|| self.client.info().best_hash));
         let list = api
@@ -119,7 +118,7 @@ where
         size: Option<u64>,
         offset: Option<u64>,
         at: Option<<Block as BlockT>::Hash>,
-    ) -> Result<Vec<Loan<AssetId, Balance, BlockNumber, AccountId>>> {
+    ) -> Result<Vec<P2PLoan<AssetId, Balance, BlockNumber, AccountId>>> {
         let api = self.client.runtime_api();
         let at = BlockId::hash(at.unwrap_or_else(|| self.client.info().best_hash));
         let list = api

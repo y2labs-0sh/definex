@@ -1,5 +1,5 @@
 [package]
-name = "ls-biding-primitives"
+name = "p2p-primitives"
 version = "0.0.1"
 authors = [ "Kyli Bing <kylidboy@outlook.com>" ]
 edition = "2018"

@@ -1,5 +1,5 @@
 [package]
-name = "ls-biding"
+name = "p2p"
 version = "0.1.0"
 authors = ["Definex Team"]
 edition = "2018"
@@ -18,10 +18,10 @@ std = [
     "timestamp/std",
     "generic-asset/std",
     "new-oracle/std",
-    "ls-biding-primitives/std",
+    "p2p-primitives/std",
 ]
 
-[dependencies.ls-biding-primitives]
+[dependencies.p2p-primitives]
 path = "./primitives"
 default-features = false
 

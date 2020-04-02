@@ -76,10 +76,13 @@ std = [
     'generic-asset/std',
     'bridge/std',
     'new-oracle/std',
-    'ls-biding/std',
+    'p2p/std',
     'generic-asset-rpc-runtime-api/std',
-    'ls-biding-rpc-runtime-api/std',
-    'ls-biding-primitives/std',
+    'p2p-rpc-runtime-api/std',
+    'p2p-primitives/std',
+    'deposit-loan/std',
+    'deposit-loan-rpc-runtime-api/std',
+    'deposit-loan-primitives/std',
 ]
 
 [dependencies.codec]
@@ -420,21 +423,33 @@ path = "../pallets/bridge"
 default-features = false
 path = "../pallets/new-oracle"
 
-[dependencies.ls-biding]
+[dependencies.p2p]
 default-features = false
-path = "../pallets/ls-biding"
+path = "../pallets/p2p"
 
 [dependencies.generic-asset-rpc-runtime-api]
 default-features = false
 path = "../pallets/generic-asset/rpc/runtime-api"
 
-[dependencies.ls-biding-rpc-runtime-api]
+[dependencies.p2p-rpc-runtime-api]
 default-features = false
-path = "../pallets/ls-biding/rpc/runtime-api"
+path = "../pallets/p2p/rpc/runtime-api"
 
-[dependencies.ls-biding-primitives]
+[dependencies.p2p-primitives]
 default-features = false
-path = "../pallets/ls-biding/primitives"
+path = "../pallets/p2p/primitives"
+
+[dependencies.deposit-loan]
+default-features = false
+path = "../pallets/deposit-loan"
+
+[dependencies.deposit-loan-rpc-runtime-api]
+default-features = false
+path = "../pallets/deposit-loan/rpc/runtime-api"
+
+[dependencies.deposit-loan-primitives]
+default-features = false
+path = "../pallets/deposit-loan/primitives"
 
 [package]
 authors = ['Parity Technologies <admin@parity.io>']

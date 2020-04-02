@@ -160,7 +160,7 @@ impl Trait for Test {
     type Days = DaysInBlockNumber;
 }
 
-pub type LSBidingTest = Module<Test>;
+pub type P2PTest = Module<Test>;
 pub type SystemTest = system::Module<Test>;
 pub type GenericAssetTest = generic_asset::Module<Test>;
 

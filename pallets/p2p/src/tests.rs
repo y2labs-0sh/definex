@@ -41,13 +41,13 @@ fn unittest_works() {
 
 fn next_n_block(n: <Test as system::Trait>::BlockNumber) {
     SystemTest::set_block_number(SystemTest::block_number() + n);
-    LSBidingTest::on_finalize(SystemTest::block_number());
+    P2PTest::on_finalize(SystemTest::block_number());
 }
 
 #[test]
 fn fetch_prices_works() {
     ExtBuilder::default().build().execute_with(|| {
-        let prices = LSBidingTest::fetch_trading_pair_prices(USDT, BTC);
+        let prices = P2PTest::fetch_trading_pair_prices(USDT, BTC);
         assert_eq!(prices.is_some(), true);
         let prices = prices.unwrap();
         assert_eq!(prices.borrow_asset_price, 10000u32.into());
@@ -83,7 +83,7 @@ fn borrow_works() {
             collateral: BTC,
             borrow: USDT,
         };
-        let options = crate::BorrowOptions {
+        let options = crate::P2PBorrowOptions {
             amount: <<Test as generic_asset::Trait>::Balance as TryFrom<u64>>::try_from(
                 100_00000000,
             )
@@ -93,8 +93,8 @@ fn borrow_works() {
             interest_rate: 20000,
             warranty: Some(<Test as system::Trait>::BlockNumber::from(30u32)),
         };
-        let borrow_id = LSBidingTest::next_borrow_id();
-        assert_ok!(LSBidingTest::create_borrow(
+        let borrow_id = P2PTest::next_borrow_id();
+        assert_ok!(P2PTest::create_borrow(
             eve,
             <<Test as generic_asset::Trait>::Balance as TryFrom<u64>>::try_from(100000000)
                 .ok()
@@ -103,7 +103,7 @@ fn borrow_works() {
             options,
         ));
 
-        let borrow = LSBidingTest::borrows(borrow_id);
+        let borrow = P2PTest::borrows(borrow_id);
 
         dbg!(borrow);
     });
@@ -112,7 +112,7 @@ fn borrow_works() {
 #[test]
 fn ltv_meet_safty_works() {
     ExtBuilder::default().build().execute_with(|| {
-        let prices = LSBidingTest::fetch_trading_pair_prices(USDT, BTC);
+        let prices = P2PTest::fetch_trading_pair_prices(USDT, BTC);
         let borrow_amount =
             <<Test as generic_asset::Trait>::Balance as TryFrom<u64>>::try_from(10000_00000000)
                 .ok()
@@ -123,7 +123,7 @@ fn ltv_meet_safty_works() {
                 .unwrap();
 
         assert_eq!(
-            LSBidingTest::ltv_meet_safty(&prices.unwrap(), borrow_amount, collateral_amount),
+            P2PTest::ltv_meet_safty(&prices.unwrap(), borrow_amount, collateral_amount),
             false
         );
     });
@@ -136,7 +136,7 @@ fn expected_interest_works() {
             <<Test as generic_asset::Trait>::Balance as TryFrom<u64>>::try_from(10000_00000000)
                 .ok()
                 .unwrap();
-        let interest = LSBidingTest::calculate_expected_interest(20000, 10, borrow_amount);
+        let interest = P2PTest::calculate_expected_interest(20000, 10, borrow_amount);
         dbg!(interest);
         assert_eq!(
             interest,
@@ -175,7 +175,7 @@ fn multi_borrows_error_works() {
             collateral: BTC,
             borrow: USDT,
         };
-        let options = crate::BorrowOptions {
+        let options = crate::P2PBorrowOptions {
             amount: <<Test as generic_asset::Trait>::Balance as TryFrom<u64>>::try_from(
                 100_00000000,
             )
@@ -186,7 +186,7 @@ fn multi_borrows_error_works() {
             warranty: Some(<Test as system::Trait>::BlockNumber::from(30u32)),
         };
 
-        assert_ok!(LSBidingTest::create_borrow(
+        assert_ok!(P2PTest::create_borrow(
             eve.clone(),
             <<Test as generic_asset::Trait>::Balance as TryFrom<u64>>::try_from(100000000)
                 .ok()
@@ -196,7 +196,7 @@ fn multi_borrows_error_works() {
         ));
 
         assert_noop!(
-            LSBidingTest::create_borrow(
+            P2PTest::create_borrow(
                 eve,
                 <<Test as generic_asset::Trait>::Balance as TryFrom<u64>>::try_from(100000000)
                     .ok()
@@ -237,7 +237,7 @@ fn invalid_borrow_works() {
             collateral: BTC,
             borrow: USDT,
         };
-        let options = crate::BorrowOptions {
+        let options = crate::P2PBorrowOptions {
             amount: <<Test as generic_asset::Trait>::Balance as TryFrom<u64>>::try_from(
                 4000_00000000,
             )
@@ -249,7 +249,7 @@ fn invalid_borrow_works() {
         };
 
         assert_noop!(
-            LSBidingTest::create_borrow(
+            P2PTest::create_borrow(
                 eve,
                 <<Test as generic_asset::Trait>::Balance as TryFrom<u64>>::try_from(1_00000000)
                     .ok()
@@ -290,7 +290,7 @@ fn lend_works() {
             collateral: BTC,
             borrow: USDT,
         };
-        let options = crate::BorrowOptions {
+        let options = crate::P2PBorrowOptions {
             amount: <<Test as generic_asset::Trait>::Balance as TryFrom<u64>>::try_from(
                 100_00000000,
             )
@@ -300,8 +300,8 @@ fn lend_works() {
             interest_rate: 20000,
             warranty: Some(<Test as system::Trait>::BlockNumber::from(30u32)),
         };
-        let borrow_id = LSBidingTest::next_borrow_id();
-        assert_ok!(LSBidingTest::create_borrow(
+        let borrow_id = P2PTest::next_borrow_id();
+        assert_ok!(P2PTest::create_borrow(
             eve,
             <<Test as generic_asset::Trait>::Balance as TryFrom<u64>>::try_from(100000000)
                 .ok()
@@ -310,10 +310,10 @@ fn lend_works() {
             options,
         ));
 
-        let loan_id = LSBidingTest::next_loan_id();
-        assert_ok!(LSBidingTest::create_loan(dave, borrow_id));
+        let loan_id = P2PTest::next_loan_id();
+        assert_ok!(P2PTest::create_loan(dave, borrow_id));
 
-        let loan = LSBidingTest::loans(loan_id);
+        let loan = P2PTest::loans(loan_id);
         assert_eq!(loan.borrow_id, borrow_id);
         assert_eq!(loan.due, 864001u64);
 
@@ -349,7 +349,7 @@ fn repay_works() {
             collateral: BTC,
             borrow: USDT,
         };
-        let options = crate::BorrowOptions {
+        let options = crate::P2PBorrowOptions {
             amount: <<Test as generic_asset::Trait>::Balance as TryFrom<u64>>::try_from(
                 100_00000000,
             )
@@ -359,8 +359,8 @@ fn repay_works() {
             interest_rate: 20000,
             warranty: Some(<Test as system::Trait>::BlockNumber::from(30u32)),
         };
-        let borrow_id = LSBidingTest::next_borrow_id();
-        assert_ok!(LSBidingTest::create_borrow(
+        let borrow_id = P2PTest::next_borrow_id();
+        assert_ok!(P2PTest::create_borrow(
             eve,
             <<Test as generic_asset::Trait>::Balance as TryFrom<u64>>::try_from(100000000)
                 .ok()
@@ -369,12 +369,12 @@ fn repay_works() {
             options,
         ));
 
-        let loan_id = LSBidingTest::next_loan_id();
-        assert_ok!(LSBidingTest::create_loan(dave, borrow_id));
-        let loan = LSBidingTest::loans(loan_id);
+        let loan_id = P2PTest::next_loan_id();
+        assert_ok!(P2PTest::create_loan(dave, borrow_id));
+        let loan = P2PTest::loans(loan_id);
         assert_eq!(loan.borrow_id, borrow_id);
         assert_noop!(
-            LSBidingTest::repay_loan(eve, borrow_id),
+            P2PTest::repay_loan(eve, borrow_id),
             Error::<Test>::NotEnoughBalance
         );
         assert_ok!(GenericAssetTest::mint_free(
@@ -385,8 +385,8 @@ fn repay_works() {
                 .ok()
                 .unwrap(),
         ));
-        assert_ok!(LSBidingTest::repay_loan(eve, borrow_id));
-        assert_eq!(LSBidingTest::alive_borrow_ids().contains(&borrow_id), false);
+        assert_ok!(P2PTest::repay_loan(eve, borrow_id));
+        assert_eq!(P2PTest::alive_borrow_ids().contains(&borrow_id), false);
     });
 }
 
@@ -418,7 +418,7 @@ fn liquidate_works() {
             collateral: BTC,
             borrow: USDT,
         };
-        let options = crate::BorrowOptions {
+        let options = crate::P2PBorrowOptions {
             amount: <<Test as generic_asset::Trait>::Balance as TryFrom<u64>>::try_from(
                 100_00000000,
             )
@@ -428,8 +428,8 @@ fn liquidate_works() {
             interest_rate: 20000,
             warranty: Some(<Test as system::Trait>::BlockNumber::from(30u32)),
         };
-        let borrow_id = LSBidingTest::next_borrow_id();
-        assert_ok!(LSBidingTest::create_borrow(
+        let borrow_id = P2PTest::next_borrow_id();
+        assert_ok!(P2PTest::create_borrow(
             eve,
             <<Test as generic_asset::Trait>::Balance as TryFrom<u64>>::try_from(100000000)
                 .ok()
@@ -437,18 +437,18 @@ fn liquidate_works() {
             trading_pair,
             options,
         ));
-        let loan_id = LSBidingTest::next_loan_id();
-        assert_ok!(LSBidingTest::create_loan(dave, borrow_id));
+        let loan_id = P2PTest::next_loan_id();
+        assert_ok!(P2PTest::create_loan(dave, borrow_id));
         assert_noop!(
-            LSBidingTest::repay_loan(eve, borrow_id),
+            P2PTest::repay_loan(eve, borrow_id),
             Error::<Test>::NotEnoughBalance
         );
 
         next_n_block(86403u32.into());
 
-        let loan = LSBidingTest::loans(loan_id);
+        let loan = P2PTest::loans(loan_id);
 
-        assert_eq!(loan.status, LoanHealth::Overdue);
+        assert_eq!(loan.status, P2PLoanHealth::Overdue);
         assert_ok!(GenericAssetTest::mint_free(
             &USDT,
             &root,
@@ -458,9 +458,9 @@ fn liquidate_works() {
                 .unwrap(),
         ));
 
-        assert_ok!(LSBidingTest::liquidate_loan(dave, loan_id));
+        assert_ok!(P2PTest::liquidate_loan(dave, loan_id));
 
-        let loan = LSBidingTest::loans(loan_id);
-        assert_eq!(loan.status, LoanHealth::Liquidated);
+        let loan = P2PTest::loans(loan_id);
+        assert_eq!(loan.status, P2PLoanHealth::Liquidated);
     });
 }

@@ -1,0 +1,22 @@
+[package]
+name = "deposit-loan-primitives"
+version = "0.0.1"
+authors = [ "Kyli Bing <kylidboy@outlook.com>" ]
+edition = "2018"
+license = "GPL-3.0"
+
+[dependencies]
+codec = { package = "parity-scale-codec", version = "1.2.0", default-features = false, features = ["derive"] }
+sp-std = { package = "sp-std", default-features = false, git = "https://github.com/paritytech/substrate.git", rev = "6ce091737dc7f114dd420f8b879f8a467c1d501b" }
+sp-runtime = { package = "sp-runtime", default-features = false, git = "https://github.com/paritytech/substrate.git", rev = "6ce091737dc7f114dd420f8b879f8a467c1d501b" }
+support = { default_features = false, git = "https://github.com/paritytech/substrate.git", package = "frame-support", rev = "6ce091737dc7f114dd420f8b879f8a467c1d501b" }
+serde = { version = "1.0.104", optional = true, features = [ "derive" ] }
+
+[features]
+default = ["std"]
+std = [
+    "serde",
+    "codec/std",
+    "sp-runtime/std",
+    "sp-std/std",
+]

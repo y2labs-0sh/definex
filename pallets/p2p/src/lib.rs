@@ -16,8 +16,8 @@
 // This module is meant for Web3 grant. In this module, definex implemented a DeFi model which follows a 'maker-taker'.
 
 //! Basically, there are 3 major roles:
-//!     1. borrower: those who want to borrow money. they can publish their needs (collateral amount, borrow amount, how long they will repay, a specific interest rate, etc.) on the platform.
-//!     2. loaner: those who bring liquidity to the platform. they select the borrows that most profitable, and lend the money to the borrower. By doing this, they earn the negotiated interest.
+//!     1. maker: those who want to borrow money. they can publish their needs (collateral amount, borrow amount, how long they will repay, a specific interest rate, etc.) on the platform.
+//!     2. taker: those who bring liquidity to the platform. they select the borrows that most profitable, and lend the money to the borrower. By doing this, they earn the negotiated interest.
 //!     3. liquidator: those who keep monitoring if there is any loan with a ltv lower than the 'LTVLiquidate'. By doing this, they would be rewarded.
 //!
 //!
@@ -57,7 +57,7 @@ use support::{
 #[allow(unused_imports)]
 use system::{ensure_root, ensure_signed};
 
-pub use ls_biding_primitives::*;
+pub use p2p_primitives::*;
 
 mod mock;
 mod tests;
@@ -79,7 +79,7 @@ pub trait Trait:
 
 // This module's storage items.
 decl_storage! {
-    trait Store for Module<T: Trait> as LSBiding {
+    trait Store for Module<T: Trait> as P2p {
         /// module level switch
         pub Paused get(paused) : bool = false;
         /// hold borrowers' collateral temporarily
@@ -97,19 +97,19 @@ decl_storage! {
         /// minimium interest rate
         pub MinBorrowInterestRate get(min_borrow_interest_rate) config() : u64;
         /// borrow id counter
-        pub NextBorrowId get(next_borrow_id) : BorrowId = 1;
+        pub NextBorrowId get(next_borrow_id) : P2PBorrowId = 1;
         /// loan id counter
-        pub NextLoanId get(next_loan_id) : LoanId = 1;
+        pub NextLoanId get(next_loan_id) : P2PLoanId = 1;
 
         /// an account can only have one alive borrow at a time
-        pub Borrows get(borrows) : map hasher(twox_64_concat) BorrowId => Borrow<T::AssetId, T::Balance, T::BlockNumber, T::AccountId>;
-        pub BorrowIdsByAccountId get(borrow_ids_by_account_id) : map hasher(opaque_blake2_256) T::AccountId => Vec<BorrowId>;
-        pub AliveBorrowIds get(alive_borrow_ids) : Vec<BorrowId>;
+        pub Borrows get(borrows) : map hasher(twox_64_concat) P2PBorrowId => P2PBorrow<T::AssetId, T::Balance, T::BlockNumber, T::AccountId>;
+        pub BorrowIdsByAccountId get(borrow_ids_by_account_id) : map hasher(opaque_blake2_256) T::AccountId => Vec<P2PBorrowId>;
+        pub AliveBorrowIds get(alive_borrow_ids) : Vec<P2PBorrowId>;
 
         /// on the other hand, an account can have multiple alive loans
-        pub Loans get(loans) : map hasher(twox_64_concat) LoanId => Loan<T::AssetId, T::Balance, T::BlockNumber, T::AccountId>;
-        pub LoanIdsByAccountId get(loan_ids_by_account_id) : map hasher(opaque_blake2_256) T::AccountId => Vec<LoanId>;
-        pub AliveLoanIdsByAccountId get(alive_loan_ids_by_account_id) : map hasher(opaque_blake2_256) T::AccountId => Vec<LoanId>;
+        pub Loans get(loans) : map hasher(twox_64_concat) P2PLoanId => P2PLoan<T::AssetId, T::Balance, T::BlockNumber, T::AccountId>;
+        pub LoanIdsByAccountId get(loan_ids_by_account_id) : map hasher(opaque_blake2_256) T::AccountId => Vec<P2PLoanId>;
+        pub AliveLoanIdsByAccountId get(alive_loan_ids_by_account_id) : map hasher(opaque_blake2_256) T::AccountId => Vec<P2PLoanId>;
         pub AccountIdsWithLiveLoans get(account_ids_with_loans) : Vec<T::AccountId>;
     }
 }
@@ -144,6 +144,8 @@ decl_module! {
     pub struct Module<T: Trait> for enum Call where origin: T::Origin {
         const LTV_SCALE: u32 = LTV_SCALE;
         const INTEREST_SCALE: u64 = INTEREST_RATE_PRECISION;
+
+        type Error = Error<T>;
 
         fn deposit_event() = default;
 
@@ -213,42 +215,42 @@ decl_module! {
         }
 
         #[weight = SimpleDispatchInfo::FixedNormal(1_000_000)]
-        pub fn make(origin, collateral_balance: T::Balance, trading_pair: TradingPair<T::AssetId>, borrow_options: BorrowOptions<T::Balance,T::BlockNumber>) -> DispatchResult {
+        pub fn make(origin, collateral_balance: T::Balance, trading_pair: TradingPair<T::AssetId>, borrow_options: P2PBorrowOptions<T::Balance,T::BlockNumber>) -> DispatchResult {
             ensure!(!Self::paused(), Error::<T>::Paused);
             let who = ensure_signed(origin)?;
             Self::create_borrow(who, collateral_balance, trading_pair, borrow_options)
         }
 
         #[weight = SimpleDispatchInfo::FixedNormal(500_000)]
-        pub fn cancel(origin, borrow_id: BorrowId) -> DispatchResult {
+        pub fn cancel(origin, borrow_id: P2PBorrowId) -> DispatchResult {
             ensure!(!Self::paused(), Error::<T>::Paused);
             let who = ensure_signed(origin)?;
             Self::remove_borrow(who, borrow_id)
         }
 
         #[weight = SimpleDispatchInfo::FixedNormal(1_000_000)]
-        pub fn take(origin, borrow_id: BorrowId) -> DispatchResult {
+        pub fn take(origin, borrow_id: P2PBorrowId) -> DispatchResult {
             ensure!(!Self::paused(), Error::<T>::Paused);
             let who = ensure_signed(origin)?;
             Self::create_loan(who, borrow_id)
         }
 
         #[weight = SimpleDispatchInfo::FixedNormal(1_000_000)]
-        pub fn liquidate(origin, loan_id: LoanId) -> DispatchResult {
+        pub fn liquidate(origin, loan_id: P2PLoanId) -> DispatchResult {
             ensure!(!Self::paused(), Error::<T>::Paused);
             let who = ensure_signed(origin)?;
             Self::liquidate_loan(who, loan_id)
         }
 
         #[weight = SimpleDispatchInfo::FixedNormal(500_000)]
-        pub fn add(origin, borrow_id: BorrowId, amount: T::Balance) -> DispatchResult {
+        pub fn add(origin, borrow_id: P2PBorrowId, amount: T::Balance) -> DispatchResult {
             ensure!(!Self::paused(), Error::<T>::Paused);
             let who = ensure_signed(origin)?;
             Self::add_collateral(who, borrow_id, amount)
         }
 
         #[weight = SimpleDispatchInfo::FixedNormal(1_000_000)]
-        pub fn repay(origin, borrow_id: BorrowId) -> DispatchResult {
+        pub fn repay(origin, borrow_id: P2PBorrowId) -> DispatchResult {
             ensure!(!Self::paused(), Error::<T>::Paused);
             let who = ensure_signed(origin)?;
             Self::repay_loan(who, borrow_id)
@@ -262,24 +264,24 @@ decl_event!(
     where
         // AccountId = <T as system::Trait>::AccountId,
         // Balance = <T as generic_asset::Trait>::Balance,
-        Loan = Loan<<T as generic_asset::Trait>::AssetId, <T as generic_asset::Trait>::Balance, <T as system::Trait>::BlockNumber, <T as system::Trait>::AccountId>,
-        Borrow = Borrow<<T as generic_asset::Trait>::AssetId, <T as generic_asset::Trait>::Balance, <T as system::Trait>::BlockNumber, <T as system::Trait>::AccountId>,
+        P2PLoan = P2PLoan<<T as generic_asset::Trait>::AssetId, <T as generic_asset::Trait>::Balance, <T as system::Trait>::BlockNumber, <T as system::Trait>::AccountId>,
+        P2PBorrow = P2PBorrow<<T as generic_asset::Trait>::AssetId, <T as generic_asset::Trait>::Balance, <T as system::Trait>::BlockNumber, <T as system::Trait>::AccountId>,
     {
-        BorrowListed(Borrow),
-        BorrowUnlisted(BorrowId),
-        LoanCreated(Loan),
-        LoanLiquidated(LoanId),
-        LoanRepaid(LoanId),
-        CollateralAdded(BorrowId),
+        BorrowListed(P2PBorrow),
+        BorrowUnlisted(P2PBorrowId),
+        LoanCreated(P2PLoan),
+        LoanLiquidated(P2PLoanId),
+        LoanRepaid(P2PLoanId),
+        CollateralAdded(P2PBorrowId),
 
         // issue when the current block number is greater than the dead_after of a borrow
-        BorrowDied(BorrowId),
+        BorrowDied(P2PBorrowId),
 
         // issue when the current block number is greater than the due of a loan
-        LoanOverdue(LoanId),
+        LoanOverdue(P2PLoanId),
 
-        // issue when status of a loan changed from LoanHealth::Well to LoanHealth::ToBeLiquidated
-        LoanToBeLiquidated(LoanId),
+        // issue when status of a loan changed from P2PLoanHealth::Well to P2PLoanHealth::ToBeLiquidated
+        LoanToBeLiquidated(P2PLoanId),
     }
 );
 
@@ -288,7 +290,7 @@ impl<T: Trait> Module<T> {
     pub fn get_borrows(
         size: Option<u64>,
         offset: Option<u64>,
-    ) -> Option<Vec<Borrow<T::AssetId, T::Balance, T::BlockNumber, T::AccountId>>> {
+    ) -> Option<Vec<P2PBorrow<T::AssetId, T::Balance, T::BlockNumber, T::AccountId>>> {
         let offset = offset.unwrap_or(0);
         let size = size.unwrap_or(10);
         let mut res = Vec::with_capacity(size as usize);
@@ -311,7 +313,7 @@ impl<T: Trait> Module<T> {
     pub fn get_loans(
         size: Option<u64>,
         offset: Option<u64>,
-    ) -> Option<Vec<Loan<T::AssetId, T::Balance, T::BlockNumber, T::AccountId>>> {
+    ) -> Option<Vec<P2PLoan<T::AssetId, T::Balance, T::BlockNumber, T::AccountId>>> {
         let offset = offset.unwrap_or(0);
         let size = size.unwrap_or(10);
         let mut res = Vec::with_capacity(size as usize);
@@ -327,13 +329,13 @@ impl<T: Trait> Module<T> {
         }
     }
 
-    fn generate_borrow_id() -> BorrowId {
+    fn generate_borrow_id() -> P2PBorrowId {
         let id = Self::next_borrow_id();
         NextBorrowId::mutate(|v| *v += 1);
         id
     }
 
-    fn generate_loan_id() -> LoanId {
+    fn generate_loan_id() -> P2PLoanId {
         let id = Self::next_loan_id();
         NextLoanId::mutate(|v| *v += 1);
         id
@@ -357,7 +359,7 @@ impl<T: Trait> Module<T> {
 
     pub fn add_collateral(
         who: T::AccountId,
-        borrow_id: BorrowId,
+        borrow_id: P2PBorrowId,
         amount: T::Balance,
     ) -> DispatchResult {
         ensure!(
@@ -391,7 +393,7 @@ impl<T: Trait> Module<T> {
         Ok(())
     }
 
-    pub fn repay_loan(who: T::AccountId, borrow_id: BorrowId) -> DispatchResult {
+    pub fn repay_loan(who: T::AccountId, borrow_id: P2PBorrowId) -> DispatchResult {
         ensure!(
             <Borrows<T>>::contains_key(borrow_id),
             Error::<T>::UnknownBorrowId
@@ -409,7 +411,7 @@ impl<T: Trait> Module<T> {
         );
         let loan_id = borrow.loan_id.unwrap();
         let loan = <Loans<T>>::get(loan_id);
-        ensure!(loan.status == LoanHealth::Well, Error::<T>::LoanNotWell);
+        ensure!(loan.status == P2PLoanHealth::Well, Error::<T>::LoanNotWell);
 
         if Self::ltv_meet_liquidation(
             &trading_pair_prices,
@@ -417,7 +419,7 @@ impl<T: Trait> Module<T> {
             loan.collateral_balance,
         ) {
             <Loans<T>>::mutate(&loan.id, |v| {
-                v.status = LoanHealth::ToBeLiquidated;
+                v.status = P2PLoanHealth::ToBeLiquidated;
             });
             return Err(Error::<T>::ShouldBeLiquidated.into());
         }
@@ -487,7 +489,7 @@ impl<T: Trait> Module<T> {
         who: T::AccountId,
         collateral_balance: T::Balance,
         trading_pair: TradingPair<T::AssetId>,
-        borrow_options: BorrowOptions<T::Balance, T::BlockNumber>,
+        borrow_options: P2PBorrowOptions<T::Balance, T::BlockNumber>,
     ) -> DispatchResult {
         ensure!(
             borrow_options.terms >= Self::min_borrow_terms(),
@@ -535,7 +537,7 @@ impl<T: Trait> Module<T> {
             &who,
             collateral_balance,
         )?;
-        let b = Borrow {
+        let b = P2PBorrow {
             id: borrow_id.clone(),
             lock_id: lock_id,
             who: who.clone(),
@@ -561,7 +563,7 @@ impl<T: Trait> Module<T> {
         Ok(())
     }
 
-    pub fn remove_borrow(who: T::AccountId, borrow_id: BorrowId) -> DispatchResult {
+    pub fn remove_borrow(who: T::AccountId, borrow_id: P2PBorrowId) -> DispatchResult {
         ensure!(
             <Borrows<T>>::contains_key(&borrow_id),
             Error::<T>::UnknownBorrowId
@@ -595,7 +597,7 @@ impl<T: Trait> Module<T> {
         Ok(())
     }
 
-    pub fn create_loan(loaner: T::AccountId, borrow_id: BorrowId) -> DispatchResult {
+    pub fn create_loan(loaner: T::AccountId, borrow_id: P2PBorrowId) -> DispatchResult {
         let borrow = Self::ensure_borrow_available(borrow_id)?;
 
         // get collateral amount from locked balance
@@ -636,7 +638,7 @@ impl<T: Trait> Module<T> {
                 let current_block_number = <system::Module<T>>::block_number();
 
                 // generate a loan
-                let loan = Loan {
+                let loan = P2PLoan {
                     id: Self::generate_loan_id(),
                     borrow_id: borrow_id,
                     borrower_id: borrow.who.clone(),
@@ -650,7 +652,7 @@ impl<T: Trait> Module<T> {
                     loan_asset_id: borrow.borrow_asset_id,
                     collateral_balance: collateral_balance,
                     loan_balance: borrow.borrow_balance,
-                    status: LoanHealth::Well,
+                    status: P2PLoanHealth::Well,
                     interest_rate: borrow.interest_rate,
                     liquidation_type: Default::default(),
                 };
@@ -689,7 +691,7 @@ impl<T: Trait> Module<T> {
 
                 // mark borrow taken and save the borrow
                 <Borrows<T>>::mutate(&borrow_id, |v| {
-                    v.status = BorrowStatus::Taken;
+                    v.status = P2PBorrowStatus::Taken;
                     v.loan_id = Some(loan_id);
                 });
 
@@ -734,19 +736,19 @@ impl<T: Trait> Module<T> {
             >= Self::safe_ltv().into()
     }
 
-    pub fn liquidate_loan(liquidator: T::AccountId, loan_id: LoanId) -> DispatchResult {
+    pub fn liquidate_loan(liquidator: T::AccountId, loan_id: P2PLoanId) -> DispatchResult {
         let loan = <Loans<T>>::get(loan_id);
         ensure!(
-            loan.status == LoanHealth::Overdue
-                || loan.status == LoanHealth::Well
-                || loan.status == LoanHealth::ToBeLiquidated,
+            loan.status == P2PLoanHealth::Overdue
+                || loan.status == P2PLoanHealth::Well
+                || loan.status == P2PLoanHealth::ToBeLiquidated,
             Error::<T>::ShouldNotBeLiquidated
         );
 
         let trading_pair_prices =
             Self::fetch_trading_pair_prices(loan.loan_asset_id, loan.collateral_asset_id)
                 .ok_or(Error::<T>::TradingPairPriceMissing)?;
-        if loan.status != LoanHealth::Overdue {
+        if loan.status != P2PLoanHealth::Overdue {
             ensure!(
                 Self::ltv_meet_liquidation(
                     &trading_pair_prices,
@@ -870,11 +872,11 @@ impl<T: Trait> Module<T> {
     }
 
     fn repay_cleanup(
-        borrow: Borrow<T::AssetId, T::Balance, T::BlockNumber, T::AccountId>,
-        loan: Loan<T::AssetId, T::Balance, T::BlockNumber, T::AccountId>,
+        borrow: P2PBorrow<T::AssetId, T::Balance, T::BlockNumber, T::AccountId>,
+        loan: P2PLoan<T::AssetId, T::Balance, T::BlockNumber, T::AccountId>,
     ) {
         <Borrows<T>>::mutate(loan.borrow_id, |v| {
-            v.status = BorrowStatus::Completed;
+            v.status = P2PBorrowStatus::Completed;
         });
         AliveBorrowIds::mutate(|v| {
             *v = v
@@ -900,14 +902,14 @@ impl<T: Trait> Module<T> {
             });
         }
         <Loans<T>>::mutate(loan.id, |v| {
-            v.status = LoanHealth::Completed;
+            v.status = P2PLoanHealth::Completed;
         });
     }
 
     // make sure all the internal states are consistent
-    fn liquidation_cleanup(loan: Loan<T::AssetId, T::Balance, T::BlockNumber, T::AccountId>) {
+    fn liquidation_cleanup(loan: P2PLoan<T::AssetId, T::Balance, T::BlockNumber, T::AccountId>) {
         <Borrows<T>>::mutate(loan.borrow_id, |v| {
-            v.status = BorrowStatus::Liquidated;
+            v.status = P2PBorrowStatus::Liquidated;
         });
         AliveBorrowIds::mutate(|v| {
             *v = v
@@ -933,7 +935,7 @@ impl<T: Trait> Module<T> {
             });
         }
         <Loans<T>>::mutate(loan.id, |v| {
-            v.status = LoanHealth::Liquidated;
+            v.status = P2PLoanHealth::Liquidated;
         });
     }
 
@@ -943,8 +945,9 @@ impl<T: Trait> Module<T> {
 
     // when found a unavailable borrow, write the new borrow status
     pub fn ensure_borrow_available(
-        borrow_id: BorrowId,
-    ) -> Result<Borrow<T::AssetId, T::Balance, T::BlockNumber, T::AccountId>, DispatchError> {
+        borrow_id: P2PBorrowId,
+    ) -> Result<P2PBorrow<T::AssetId, T::Balance, T::BlockNumber, T::AccountId>, DispatchError>
+    {
         ensure!(
             AliveBorrowIds::get().contains(&borrow_id),
             Error::<T>::BorrowNotAlive
@@ -954,7 +957,7 @@ impl<T: Trait> Module<T> {
         let borrow = <Borrows<T>>::get(borrow_id);
         if borrow.dead_after.is_some() && borrow.dead_after.unwrap() <= block_number {
             <Borrows<T>>::mutate(borrow_id, |v| {
-                v.status = BorrowStatus::Dead;
+                v.status = P2PBorrowStatus::Dead;
             });
             let new_alives = AliveBorrowIds::take()
                 .into_iter()
@@ -965,7 +968,7 @@ impl<T: Trait> Module<T> {
             return Err(Error::<T>::BorrowNotAlive.into());
         }
 
-        if borrow.status != BorrowStatus::Alive {
+        if borrow.status != P2PBorrowStatus::Alive {
             return Err(Error::<T>::BorrowNotAlive.into());
         }
 
@@ -976,12 +979,12 @@ impl<T: Trait> Module<T> {
     /// mark those who have reached the end of lives to be dead.
     pub fn periodic_check_borrows(block_number: T::BlockNumber) {
         // check alive borrows
-        let mut new_alives: Vec<BorrowId> = Vec::new();
+        let mut new_alives: Vec<P2PBorrowId> = Vec::new();
         AliveBorrowIds::take().into_iter().for_each(|borrow_id| {
             let borrow = <Borrows<T>>::get(borrow_id);
             if borrow.dead_after.is_some() && borrow.dead_after.unwrap() <= block_number {
                 <Borrows<T>>::mutate(borrow_id, |v| {
-                    v.status = BorrowStatus::Dead;
+                    v.status = P2PBorrowStatus::Dead;
                 });
                 Self::deposit_event(RawEvent::BorrowDied(borrow_id.clone()));
             } else {
@@ -1011,11 +1014,11 @@ impl<T: Trait> Module<T> {
                         loan.loan_balance,
                         loan.collateral_balance,
                     ) {
-                        loan.status = LoanHealth::ToBeLiquidated;
+                        loan.status = P2PLoanHealth::ToBeLiquidated;
                         <Loans<T>>::insert(&loan_id, loan);
                         Self::deposit_event(RawEvent::LoanToBeLiquidated(loan_id.clone()));
                     } else if block_number > loan.due {
-                        loan.status = LoanHealth::Overdue;
+                        loan.status = P2PLoanHealth::Overdue;
                         <Loans<T>>::insert(&loan_id, loan);
                         Self::deposit_event(RawEvent::LoanOverdue(loan_id.clone()));
                     }

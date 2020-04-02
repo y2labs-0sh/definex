@@ -1,5 +1,5 @@
 [package]
-name = "ls-biding-rpc-runtime-api"
+name = "p2p-rpc-runtime-api"
 version = "0.0.1"
 authors = [ "Kyli Bing <kylidboy@outlook.com>" ]
 edition = "2018"
@@ -10,7 +10,7 @@ sp-api = { default-features = false, git = "https://github.com/paritytech/substr
 codec = { package = "parity-scale-codec", version = "1.2.0", default-features = false, features = ["derive"] }
 sp-std = { default-features = false, git = "https://github.com/paritytech/substrate.git", package = "sp-std", rev = "6ce091737dc7f114dd420f8b879f8a467c1d501b" }
 sp-runtime = { default-features = false, git = "https://github.com/paritytech/substrate.git", package = "sp-runtime", rev = "6ce091737dc7f114dd420f8b879f8a467c1d501b" }
-ls-biding-primitives = { default-features = false, path = "../../primitives" }
+p2p-primitives = { default-features = false, path = "../../primitives" }
 
 [features]
 default = ["std"]
@@ -19,5 +19,5 @@ std = [
     "codec/std",
     "sp-std/std",
     "sp-runtime/std",
-    "ls-biding-primitives/std",
+    "p2p-primitives/std",
 ]

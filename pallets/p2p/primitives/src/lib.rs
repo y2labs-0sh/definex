@@ -31,12 +31,12 @@ use support::{
     IterableStorageMap,
 };
 
-pub type LoanId = u128;
-pub type BorrowId = u128;
+pub type P2PLoanId = u128;
+pub type P2PBorrowId = u128;
 
 #[derive(Debug, Encode, Decode, Clone, PartialEq, Eq)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
-pub enum LoanHealth {
+pub enum P2PLoanHealth {
     Well,
     ToBeLiquidated,
     Overdue,
@@ -44,7 +44,7 @@ pub enum LoanHealth {
     Dead,
     Completed,
 }
-impl Default for LoanHealth {
+impl Default for P2PLoanHealth {
     fn default() -> Self {
         Self::Well
     }
@@ -64,9 +64,9 @@ impl Default for LiquidationType {
 
 #[derive(Debug, Encode, Decode, Clone, Default, PartialEq, Eq)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
-pub struct Loan<AssetId, Balance, BlockNumber, AccountId> {
-    pub id: LoanId,
-    pub borrow_id: BorrowId,
+pub struct P2PLoan<AssetId, Balance, BlockNumber, AccountId> {
+    pub id: P2PLoanId,
+    pub borrow_id: P2PBorrowId,
     pub borrower_id: AccountId,
     pub loaner_id: AccountId,
     pub due: BlockNumber,
@@ -74,18 +74,18 @@ pub struct Loan<AssetId, Balance, BlockNumber, AccountId> {
     pub collateral_balance: Balance,
     pub loan_balance: Balance,
     pub loan_asset_id: AssetId,
-    pub status: LoanHealth,
+    pub status: P2PLoanHealth,
     pub interest_rate: u64,
     pub liquidation_type: LiquidationType,
 }
 
 #[derive(Debug, Encode, Decode, Clone, Default, PartialEq, Eq)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
-pub struct Borrow<AssetId, Balance, BlockNumber, AccountId> {
-    pub id: BorrowId,
+pub struct P2PBorrow<AssetId, Balance, BlockNumber, AccountId> {
+    pub id: P2PBorrowId,
     pub lock_id: u128,
     pub who: AccountId,
-    pub status: BorrowStatus,
+    pub status: P2PBorrowStatus,
     pub borrow_asset_id: AssetId,
     pub collateral_asset_id: AssetId,
     pub borrow_balance: Balance,
@@ -93,19 +93,19 @@ pub struct Borrow<AssetId, Balance, BlockNumber, AccountId> {
     pub terms: u64, // days of our lives
     pub interest_rate: u64,
     pub dead_after: Option<BlockNumber>,
-    pub loan_id: Option<LoanId>,
+    pub loan_id: Option<P2PLoanId>,
 }
 
 #[derive(Debug, Encode, Decode, Clone, PartialEq, Eq)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
-pub enum BorrowStatus {
+pub enum P2PBorrowStatus {
     Alive,
     Taken,
     Completed,
     Dead,
     Liquidated,
 }
-impl Default for BorrowStatus {
+impl Default for P2PBorrowStatus {
     fn default() -> Self {
         Self::Alive
     }
@@ -127,7 +127,7 @@ pub struct TradingPairPrices {
 
 #[derive(Debug, Encode, Decode, Clone, PartialEq, Eq)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
-pub struct BorrowOptions<B, N> {
+pub struct P2PBorrowOptions<B, N> {
     pub amount: B,
     pub terms: u64,
     pub interest_rate: u64,
