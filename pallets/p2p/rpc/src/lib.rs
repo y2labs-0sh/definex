@@ -44,14 +44,14 @@ impl From<Error> for String {
 
 /// P2P RPC methods
 #[rpc]
-pub trait P2PApi<BlockHash, AssetId, Balance, BlockNumber, AccountId> {
+pub trait P2PApi<BlockHash, BorrowsResult, LoansResult> {
     #[rpc(name = "pToP_borrows")]
     fn borrows(
         &self,
         size: Option<u64>,
         offset: Option<u64>,
         at: Option<BlockHash>,
-    ) -> Result<Vec<P2PBorrow<AssetId, Balance, BlockNumber, AccountId>>>;
+    ) -> Result<BorrowsResult>;
 
     #[rpc(name = "pToP_loans")]
     fn loans(
@@ -59,7 +59,7 @@ pub trait P2PApi<BlockHash, AssetId, Balance, BlockNumber, AccountId> {
         size: Option<u64>,
         offset: Option<u64>,
         at: Option<BlockHash>,
-    ) -> Result<Vec<P2PLoan<AssetId, Balance, BlockNumber, AccountId>>>;
+    ) -> Result<LoansResult>;
 }
 
 pub struct P2P<C, B> {
@@ -75,7 +75,11 @@ impl<C, B> P2P<C, B> {
     }
 }
 impl<C, Block, AssetId, Balance, BlockNumber, AccountId>
-    P2PApi<<Block as BlockT>::Hash, AssetId, Balance, BlockNumber, AccountId> for P2P<C, Block>
+    P2PApi<
+        <Block as BlockT>::Hash,
+        Vec<P2PBorrow<AssetId, Balance, BlockNumber, AccountId>>,
+        Vec<P2PLoan<AssetId, Balance, BlockNumber, AccountId>>,
+    > for P2P<C, Block>
 where
     Block: BlockT,
     C: Send + Sync + 'static + ProvideRuntimeApi<Block> + HeaderBackend<Block>,

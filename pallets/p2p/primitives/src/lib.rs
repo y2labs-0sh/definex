@@ -3,7 +3,7 @@
 #[allow(unused_imports)]
 use codec::{Decode, Encode, Error as codecErr, HasCompact, Input, Output};
 #[cfg(feature = "std")]
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
 #[allow(unused_imports)]
 use sp_runtime::traits::{
     AtLeast32Bit, Bounded, CheckedAdd, CheckedMul, CheckedSub, MaybeDisplay,
@@ -30,6 +30,23 @@ use support::{
     weights::SimpleDispatchInfo,
     IterableStorageMap,
 };
+
+#[cfg(feature = "std")]
+fn serialize_as_string<S: Serializer, T: std::fmt::Display>(
+    t: &T,
+    serializer: S,
+) -> Result<S::Ok, S::Error> {
+    serializer.serialize_str(&t.to_string())
+}
+
+#[cfg(feature = "std")]
+fn deserialize_from_string<'de, D: Deserializer<'de>, T: std::str::FromStr>(
+    deserializer: D,
+) -> Result<T, D::Error> {
+    let s = String::deserialize(deserializer)?;
+    s.parse::<T>()
+        .map_err(|_| serde::de::Error::custom("Parse from string failed"))
+}
 
 pub type P2PLoanId = u128;
 pub type P2PBorrowId = u128;
@@ -65,14 +82,59 @@ impl Default for LiquidationType {
 #[derive(Debug, Encode, Decode, Clone, Default, PartialEq, Eq)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub struct P2PLoan<AssetId, Balance, BlockNumber, AccountId> {
+    #[cfg_attr(
+        feature = "std",
+        serde(bound(serialize = "Balance: std::fmt::Display"))
+    )]
+    #[cfg_attr(feature = "std", serde(serialize_with = "serialize_as_string"))]
+    #[cfg_attr(
+        feature = "std",
+        serde(bound(deserialize = "Balance: std::str::FromStr"))
+    )]
+    #[cfg_attr(feature = "std", serde(deserialize_with = "deserialize_from_string"))]
     pub id: P2PLoanId,
+
+    #[cfg_attr(
+        feature = "std",
+        serde(bound(serialize = "Balance: std::fmt::Display"))
+    )]
+    #[cfg_attr(feature = "std", serde(serialize_with = "serialize_as_string"))]
+    #[cfg_attr(
+        feature = "std",
+        serde(bound(deserialize = "Balance: std::str::FromStr"))
+    )]
+    #[cfg_attr(feature = "std", serde(deserialize_with = "deserialize_from_string"))]
     pub borrow_id: P2PBorrowId,
+
     pub borrower_id: AccountId,
     pub loaner_id: AccountId,
     pub due: BlockNumber,
     pub collateral_asset_id: AssetId,
+
+    #[cfg_attr(
+        feature = "std",
+        serde(bound(serialize = "Balance: std::fmt::Display"))
+    )]
+    #[cfg_attr(feature = "std", serde(serialize_with = "serialize_as_string"))]
+    #[cfg_attr(
+        feature = "std",
+        serde(bound(deserialize = "Balance: std::str::FromStr"))
+    )]
+    #[cfg_attr(feature = "std", serde(deserialize_with = "deserialize_from_string"))]
     pub collateral_balance: Balance,
+
+    #[cfg_attr(
+        feature = "std",
+        serde(bound(serialize = "Balance: std::fmt::Display"))
+    )]
+    #[cfg_attr(feature = "std", serde(serialize_with = "serialize_as_string"))]
+    #[cfg_attr(
+        feature = "std",
+        serde(bound(deserialize = "Balance: std::str::FromStr"))
+    )]
+    #[cfg_attr(feature = "std", serde(deserialize_with = "deserialize_from_string"))]
     pub loan_balance: Balance,
+
     pub loan_asset_id: AssetId,
     pub status: P2PLoanHealth,
     pub interest_rate: u64,
@@ -82,14 +144,59 @@ pub struct P2PLoan<AssetId, Balance, BlockNumber, AccountId> {
 #[derive(Debug, Encode, Decode, Clone, Default, PartialEq, Eq)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub struct P2PBorrow<AssetId, Balance, BlockNumber, AccountId> {
+    #[cfg_attr(
+        feature = "std",
+        serde(bound(serialize = "Balance: std::fmt::Display"))
+    )]
+    #[cfg_attr(feature = "std", serde(serialize_with = "serialize_as_string"))]
+    #[cfg_attr(
+        feature = "std",
+        serde(bound(deserialize = "Balance: std::str::FromStr"))
+    )]
+    #[cfg_attr(feature = "std", serde(deserialize_with = "deserialize_from_string"))]
     pub id: P2PBorrowId,
+
+    #[cfg_attr(
+        feature = "std",
+        serde(bound(serialize = "Balance: std::fmt::Display"))
+    )]
+    #[cfg_attr(feature = "std", serde(serialize_with = "serialize_as_string"))]
+    #[cfg_attr(
+        feature = "std",
+        serde(bound(deserialize = "Balance: std::str::FromStr"))
+    )]
+    #[cfg_attr(feature = "std", serde(deserialize_with = "deserialize_from_string"))]
     pub lock_id: u128,
+
     pub who: AccountId,
     pub status: P2PBorrowStatus,
     pub borrow_asset_id: AssetId,
     pub collateral_asset_id: AssetId,
+
+    #[cfg_attr(
+        feature = "std",
+        serde(bound(serialize = "Balance: std::fmt::Display"))
+    )]
+    #[cfg_attr(feature = "std", serde(serialize_with = "serialize_as_string"))]
+    #[cfg_attr(
+        feature = "std",
+        serde(bound(deserialize = "Balance: std::str::FromStr"))
+    )]
+    #[cfg_attr(feature = "std", serde(deserialize_with = "deserialize_from_string"))]
     pub borrow_balance: Balance,
+
+    #[cfg_attr(
+        feature = "std",
+        serde(bound(serialize = "Balance: std::fmt::Display"))
+    )]
+    #[cfg_attr(feature = "std", serde(serialize_with = "serialize_as_string"))]
+    #[cfg_attr(
+        feature = "std",
+        serde(bound(deserialize = "Balance: std::str::FromStr"))
+    )]
+    #[cfg_attr(feature = "std", serde(deserialize_with = "deserialize_from_string"))]
     pub collateral_balance: Balance,
+
     pub terms: u64, // days of our lives
     pub interest_rate: u64,
     pub dead_after: Option<BlockNumber>,
