@@ -1,10 +1,8 @@
-## most of the P2P logic resides in pallets/p2p
+This project is meant for our Web3 grant application.
 
-This module is meant for Web3 grant.
+## P2P module is at pallets/p2p
 
-In this module, definex implemented a DeFi model which follows a 'maker-taker'.
-
-Basically, there are 3 major roles:
+In this DeFi pallet, there are 3 major roles:
 
     1. maker: those who want to borrow money. they can publish their needs (collateral amount, borrow amount, how long they will repay, a specific interest rate, etc.) on the platform.
 
@@ -12,19 +10,37 @@ Basically, there are 3 major roles:
 
     3. liquidator: those who keep monitoring if there is any loan with a ltv lower than the 'LTVLiquidate'. By doing this, they would be rewarded.
 
+## Money Market Module is at pallets/deposit-loan
+
+**deposit-loan** is an implementation of Financial market protocol that provides both liquid money markets for cross-chain assets and capital markets for longer-term cryptocurrency loans.
+
+    - It will automatically adjust the interest rates based on the amount saved and the amount borrowed.
+
+    - We are working on a three-level interest rate based on cash utilization rate that is partially influenced by the economic pricing for scarce resources and our belief that the demand for stable coin is relatively inelastic in different utilization rate intervals. The exact loan interest rate is yet to be determined but it would look like this :
+
+    `f(x) = 0.1x + 0.05 （0≤x＜0.4）|| 0.2x + 0.01 (0.4≤x<0.8) || 0.3x^6 + 0.1x^3 + 0.06 (0.8≤x≤1)`
+
+    In which, Utilization rate X = Total borrows / (Total deposits + Total Borrows)
+
 ## price is fed through offchain worker
 
 pallets/new-oracle
 
-you can customize your crypto price sources by "add_source".
+You can customize your crypto price sources by "add_source".
+
+And by default, DUSD(USDT) and BTC are provided.
 
 ## assets are based on pallets/generic-asset
 
-this is a modified version of frame/pallet-generic-asset.
+This is a modified version of frame/pallet-generic-asset.
 
-we need every asset dynamically created can be reserved with a lock on the balance. but the default frame/pallet-generic-asset implementation doesn't support that.
+We need every asset dynamically created can be reserved with a lock on the balance. But the default frame/pallet-generic-asset implementation doesn't support that.
+so we removed those complicated "\*\*Currency", and make all assets lockable with
+respective lock id design.
 
 ## JS types
+
+This is just for frontend developer
 
 ```javascript
 {
@@ -147,6 +163,10 @@ we need every asset dynamically created can be reserved with a lock on the balan
 ```
 
 ## RPC types
+
+Since alpha5, substrate runtime storage seems no longer provides "linked_map".
+So we provide some 'list' functions by default to offer some basic support for
+our web wallet.
 
 ```json
 {

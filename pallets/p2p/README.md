@@ -1,3 +1,15 @@
+## Intro
+
+This pallet is meant for Web3 grant.
+
+In this DeFi pallet, there are 3 major roles:
+
+    1. maker: those who want to borrow money. they can publish their needs (collateral amount, borrow amount, how long they will repay, a specific interest rate, etc.) on the platform.
+
+    2. taker: those who bring liquidity to the platform. they select the borrows that most profitable, and lend the money to the borrower. By doing this, they earn the negotiated interest.
+
+    3. liquidator: those who keep monitoring if there is any loan with a ltv lower than the 'LTVLiquidate'. By doing this, they would be rewarded.
+
 ## RPCs
 
 api.rpc.pToP.borrows() : []P2PBorrow
@@ -211,23 +223,23 @@ api.tx.pToP.repay(borrow_id:P2PBorrowId)
 ## Errors
 
 ```rust
-            Error::Paused => 0,
-            Error::MinBorrowTerms => 1,
-            Error::MinBorrowInterestRate => 2,
-            Error::CanNotReserve => 3,
-            Error::MultipleAliveBorrows => 4,
-            Error::BorrowNotAlive => 5,
-            Error::TradingPairNotAllowed => 6,
-            Error::NotOwnerOfBorrow => 7,
-            Error::UnknownBorrowId => 8,
-            Error::UnknownLoanId => 9,
-            Error::NoLockedBalance => 10,
-            Error::InitialCollateralRateFail => 11,
-            Error::NotEnoughBalance => 12,
-            Error::TradingPairPriceMissing => 13,
-            Error::BorrowNotLoaned => 14,
-            Error::LTVNotMeet => 15,
-            Error::ShouldNotBeLiquidated => 16,
-            Error::ShouldBeLiquidated => 17,
-            Error::LoanNotWell => 18,
+    Error::Paused => 0,
+    Error::MinBorrowTerms => 1,
+    Error::MinBorrowInterestRate => 2,
+    Error::CanNotReserve => 3,
+    Error::MultipleAliveBorrows => 4,
+    Error::BorrowNotAlive => 5,
+    Error::TradingPairNotAllowed => 6,
+    Error::NotOwnerOfBorrow => 7,
+    Error::UnknownBorrowId => 8,
+    Error::UnknownLoanId => 9,
+    Error::NoLockedBalance => 10,
+    Error::InitialCollateralRateFail => 11,
+    Error::NotEnoughBalance => 12,
+    Error::TradingPairPriceMissing => 13,
+    Error::BorrowNotLoaned => 14,
+    Error::LTVNotMeet => 15,
+    Error::ShouldNotBeLiquidated => 16,
+    Error::ShouldBeLiquidated => 17,
+    Error::LoanNotWell => 18,
 ```
