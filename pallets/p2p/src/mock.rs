@@ -88,7 +88,7 @@ impl system::Trait for Test {
     type AccountId = sp_core::sr25519::Public; // <<Signature as Verify>::Signer as IdentifyAccount>::AccountId; // sp_core::sr25519::Public;
     type Lookup = IdentityLookup<Self::AccountId>;
     type Header = Header;
-    type Event = ();
+    type Event = MetaEvent;
     type BlockHashCount = BlockHashCount;
     type MaximumBlockWeight = MaximumBlockWeight;
     type MaximumBlockLength = MaximumBlockLength;
@@ -130,12 +130,12 @@ impl timestamp::Trait for Test {
     type MinimumPeriod = MinimumPeriod;
 }
 impl sudo::Trait for Test {
-    type Event = ();
+    type Event = MetaEvent;
     type Call = Call<Test>;
 }
 
 impl generic_asset::Trait for Test {
-    type Event = ();
+    type Event = MetaEvent;
     type Balance = u128;
     type AssetId = u32;
 }
@@ -144,7 +144,7 @@ parameter_types! {
     pub const AggregateInterval: BlockNumber = 5;
 }
 impl new_oracle::Trait for Test {
-    type Event = ();
+    type Event = MetaEvent;
     type Call = new_oracle::Call<Test>;
     type SubmitUnsignedTransaction = SubmitTransaction;
     type SubmitSignedTransaction = SubmitTransaction;
@@ -152,12 +152,25 @@ impl new_oracle::Trait for Test {
     type PriceInUSDT = u64;
 }
 
+mod p2p {
+    pub use super::super::*;
+}
 parameter_types! {
     pub const DaysInBlockNumber: BlockNumber = 86400u32.into();
 }
 impl Trait for Test {
-    type Event = ();
+    type Event = MetaEvent;
     type Days = DaysInBlockNumber;
+}
+
+impl_outer_event! {
+    pub enum MetaEvent for Test {
+        system<T>,
+        sudo<T>,
+        new_oracle<T>,
+        generic_asset<T>,
+        p2p<T>,
+    }
 }
 
 pub type P2PTest = Module<Test>;

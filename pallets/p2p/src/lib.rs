@@ -214,6 +214,7 @@ decl_module! {
             Ok(())
         }
 
+        /// a borrower place a make order to ask for some money
         #[weight = SimpleDispatchInfo::FixedNormal(1_000_000)]
         pub fn make(origin, collateral_balance: T::Balance, trading_pair: TradingPair<T::AssetId>, borrow_options: P2PBorrowOptions<T::Balance,T::BlockNumber>) -> DispatchResult {
             ensure!(!Self::paused(), Error::<T>::Paused);
@@ -221,6 +222,7 @@ decl_module! {
             Self::create_borrow(who, collateral_balance, trading_pair, borrow_options)
         }
 
+        /// the owner of a make order is allowed to cancel this order before someone takes it
         #[weight = SimpleDispatchInfo::FixedNormal(500_000)]
         pub fn cancel(origin, borrow_id: P2PBorrowId) -> DispatchResult {
             ensure!(!Self::paused(), Error::<T>::Paused);
@@ -228,6 +230,7 @@ decl_module! {
             Self::remove_borrow(who, borrow_id)
         }
 
+        /// a lender sees a make order profitable, takes it and lends the amount of money to the borrower
         #[weight = SimpleDispatchInfo::FixedNormal(1_000_000)]
         pub fn take(origin, borrow_id: P2PBorrowId) -> DispatchResult {
             ensure!(!Self::paused(), Error::<T>::Paused);
@@ -235,6 +238,7 @@ decl_module! {
             Self::create_loan(who, borrow_id)
         }
 
+        /// anyone can liquidate a loan if the loan meets the liquidation requirements
         #[weight = SimpleDispatchInfo::FixedNormal(1_000_000)]
         pub fn liquidate(origin, loan_id: P2PLoanId) -> DispatchResult {
             ensure!(!Self::paused(), Error::<T>::Paused);
@@ -242,6 +246,7 @@ decl_module! {
             Self::liquidate_loan(who, loan_id)
         }
 
+        /// the borrower of a loan can add additional collaterals to lower the risk of being liquidated
         #[weight = SimpleDispatchInfo::FixedNormal(500_000)]
         pub fn add(origin, borrow_id: P2PBorrowId, amount: T::Balance) -> DispatchResult {
             ensure!(!Self::paused(), Error::<T>::Paused);
@@ -249,6 +254,7 @@ decl_module! {
             Self::add_collateral(who, borrow_id, amount)
         }
 
+        /// before due, the borrower returns what he borrowed and pays fee
         #[weight = SimpleDispatchInfo::FixedNormal(1_000_000)]
         pub fn repay(origin, borrow_id: P2PBorrowId) -> DispatchResult {
             ensure!(!Self::paused(), Error::<T>::Paused);
@@ -267,6 +273,11 @@ decl_event!(
         P2PLoan = P2PLoan<<T as generic_asset::Trait>::AssetId, <T as generic_asset::Trait>::Balance, <T as system::Trait>::BlockNumber, <T as system::Trait>::AccountId>,
         P2PBorrow = P2PBorrow<<T as generic_asset::Trait>::AssetId, <T as generic_asset::Trait>::Balance, <T as system::Trait>::BlockNumber, <T as system::Trait>::AccountId>,
     {
+        CheckingAliveBorrows,
+        CheckingAliveLoans,
+        CheckingAliveBorrowsDone,
+        CheckingAliveLoansDone,
+
         BorrowListed(P2PBorrow),
         BorrowUnlisted(P2PBorrowId),
         LoanCreated(P2PLoan),
@@ -978,6 +989,8 @@ impl<T: Trait> Module<T> {
     /// this will go through all borrows currently alive,
     /// mark those who have reached the end of lives to be dead.
     pub fn periodic_check_borrows(block_number: T::BlockNumber) {
+        Self::deposit_event(RawEvent::CheckingAliveBorrows);
+
         // check alive borrows
         let mut new_alives: Vec<P2PBorrowId> = Vec::new();
         AliveBorrowIds::take().into_iter().for_each(|borrow_id| {
@@ -992,39 +1005,46 @@ impl<T: Trait> Module<T> {
             }
         });
         AliveBorrowIds::put(new_alives);
+
+        Self::deposit_event(RawEvent::CheckingAliveBorrowsDone);
     }
 
     /// this will go through all loans currently alive,
     /// calculate ltv instantly and mark loans 'ToBeLiquidated' if any whos ltv is below LTVLiquidate.
     pub fn periodic_check_loans(block_number: T::BlockNumber) {
+        Self::deposit_event(RawEvent::CheckingAliveLoans);
+
         // check alive loans
         let account_ids = <AccountIdsWithLiveLoans<T>>::get();
         for account_id in account_ids {
             let loan_ids = <AliveLoanIdsByAccountId<T>>::get(account_id);
             for loan_id in loan_ids {
                 let mut loan = <Loans<T>>::get(&loan_id);
-                let trading_pair_prices =
-                    Self::fetch_trading_pair_prices(loan.loan_asset_id, loan.collateral_asset_id);
-                if trading_pair_prices.is_none() {
-                    continue;
-                } else {
-                    let trading_pair_prices = trading_pair_prices.unwrap();
-                    if Self::ltv_meet_liquidation(
-                        &trading_pair_prices,
-                        loan.loan_balance,
-                        loan.collateral_balance,
-                    ) {
-                        loan.status = P2PLoanHealth::ToBeLiquidated;
-                        <Loans<T>>::insert(&loan_id, loan);
-                        Self::deposit_event(RawEvent::LoanToBeLiquidated(loan_id.clone()));
-                    } else if block_number > loan.due {
-                        loan.status = P2PLoanHealth::Overdue;
-                        <Loans<T>>::insert(&loan_id, loan);
-                        Self::deposit_event(RawEvent::LoanOverdue(loan_id.clone()));
-                    }
+                if loan.status == P2PLoanHealth::Well {
+                    let trading_pair_prices = Self::fetch_trading_pair_prices(
+                        loan.loan_asset_id,
+                        loan.collateral_asset_id,
+                    );
+                    trading_pair_prices.map(|trading_pair_prices| {
+                        if Self::ltv_meet_liquidation(
+                            &trading_pair_prices,
+                            loan.loan_balance,
+                            loan.collateral_balance,
+                        ) {
+                            loan.status = P2PLoanHealth::ToBeLiquidated;
+                            <Loans<T>>::insert(&loan_id, loan);
+                            Self::deposit_event(RawEvent::LoanToBeLiquidated(loan_id.clone()));
+                        } else if block_number > loan.due {
+                            loan.status = P2PLoanHealth::Overdue;
+                            <Loans<T>>::insert(&loan_id, loan);
+                            Self::deposit_event(RawEvent::LoanOverdue(loan_id.clone()));
+                        }
+                    });
                 }
             }
         }
+
+        Self::deposit_event(RawEvent::CheckingAliveLoansDone);
     }
 
     fn fetch_price(asset_id: T::AssetId) -> Option<u64> {

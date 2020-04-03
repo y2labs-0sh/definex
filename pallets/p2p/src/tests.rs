@@ -445,9 +445,82 @@ fn liquidate_works() {
         );
 
         next_n_block(86403u32.into());
+        assert_eq!(
+            SystemTest::events()
+                .into_iter()
+                .map(|r| r.event)
+                .filter_map(|e| {
+                    if let MetaEvent::p2p(inner) = e {
+                        match inner {
+                            RawEvent::LoanOverdue(_) => Some(inner),
+                            _ => None,
+                        }
+                    } else {
+                        None
+                    }
+                })
+                .last()
+                .unwrap(),
+            RawEvent::LoanOverdue(loan_id)
+        );
+
+        // add extra 2 period checks, you do the math ^+^
+        next_n_block(5u32.into());
+        next_n_block(5u32.into());
+        assert_eq!(
+            SystemTest::events()
+                .into_iter()
+                .map(|r| r.event)
+                .filter_map(|ele| {
+                    if let MetaEvent::p2p(inner) = ele {
+                        match inner {
+                            RawEvent::CheckingAliveLoans => Some(inner),
+                            _ => None,
+                        }
+                    } else {
+                        None
+                    }
+                })
+                .count(),
+            3
+        );
+        assert_eq!(
+            SystemTest::events()
+                .into_iter()
+                .map(|r| r.event)
+                .filter_map(|ele| {
+                    if let MetaEvent::p2p(inner) = ele {
+                        match inner {
+                            RawEvent::CheckingAliveLoansDone => Some(inner),
+                            _ => None,
+                        }
+                    } else {
+                        None
+                    }
+                })
+                .count(),
+            3
+        );
+        // make sure no repeated overdue events fired
+        assert_eq!(
+            SystemTest::events()
+                .into_iter()
+                .map(|r| r.event)
+                .filter_map(|ele| {
+                    if let MetaEvent::p2p(inner) = ele {
+                        match inner {
+                            RawEvent::LoanOverdue(_) => Some(inner),
+                            _ => None,
+                        }
+                    } else {
+                        None
+                    }
+                })
+                .count(),
+            1
+        );
 
         let loan = P2PTest::loans(loan_id);
-
         assert_eq!(loan.status, P2PLoanHealth::Overdue);
         assert_ok!(GenericAssetTest::mint_free(
             &USDT,
@@ -457,9 +530,7 @@ fn liquidate_works() {
                 .ok()
                 .unwrap(),
         ));
-
         assert_ok!(P2PTest::liquidate_loan(dave, loan_id));
-
         let loan = P2PTest::loans(loan_id);
         assert_eq!(loan.status, P2PLoanHealth::Liquidated);
     });
