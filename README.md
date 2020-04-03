@@ -1,10 +1,8 @@
 ## most of the P2P logic resides in pallets/p2p
 
-This module is meant for Web3 grant.
+This pallet is meant for Web3 grant.
 
-In this module, definex implemented a DeFi model which follows a 'maker-taker'.
-
-Basically, there are 3 major roles:
+In this DeFi pallet, there are 3 major roles:
 
     1. maker: those who want to borrow money. they can publish their needs (collateral amount, borrow amount, how long they will repay, a specific interest rate, etc.) on the platform.
 
@@ -16,15 +14,21 @@ Basically, there are 3 major roles:
 
 pallets/new-oracle
 
-you can customize your crypto price sources by "add_source".
+You can customize your crypto price sources by "add_source".
+
+And by default, DUSD(USDT) and BTC are provided.
 
 ## assets are based on pallets/generic-asset
 
-this is a modified version of frame/pallet-generic-asset.
+This is a modified version of frame/pallet-generic-asset.
 
-we need every asset dynamically created can be reserved with a lock on the balance. but the default frame/pallet-generic-asset implementation doesn't support that.
+We need every asset dynamically created can be reserved with a lock on the balance. But the default frame/pallet-generic-asset implementation doesn't support that.
+so we removed those complicated "\*\*Currency", and make all assets lockable with
+respective lock id design.
 
 ## JS types
+
+This is just for frontend developer
 
 ```javascript
 {
@@ -147,6 +151,10 @@ we need every asset dynamically created can be reserved with a lock on the balan
 ```
 
 ## RPC types
+
+Since alpha5, substrate runtime storage seems no longer provides "linked_map".
+So we provide some 'list' functions by default to offer some basic support for
+our web wallet.
 
 ```json
 {
