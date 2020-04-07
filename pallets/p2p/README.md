@@ -27,92 +27,92 @@ api.rpc.pToP.aliveLoans(size: Optional, offset: Optional) : []P2PLoan
 ```json
 {
   "pToP": {
-    borrows: {
-      params: [
+    "borrows": {
+      "params": [
         {
-          name: "size",
-          type: "Option<u64>",
+          "name": "size",
+          "type": "Option<u64>",
         },
         {
-          name: "offset",
-          type: "Option<u64>",
-        },
-      ],
-      type: "Vec<P2PBorrow>",
-    },
-    userBorrows: {
-      params: [
-        {
-          name: "who",
-          type: "AccountId",
-        },
-        {
-          name: "size",
-          type: "Option<u64>",
-        },
-        {
-          name: "offset",
-          type: "Option<u64>",
+          "name": "offset",
+          "type": "Option<u64>",
         },
       ],
-      type: "Vec<P2PBorrow>",
+      "type": "Vec<P2PBorrow>",
     },
-    aliveBorrows: {
-      params: [
+    "userBorrows": {
+      "params": [
         {
-          name: "size",
-          type: "Option<u64>",
+          "name": "who",
+          "type": "AccountId",
         },
         {
-          name: "offset",
-          type: "Option<u64>",
+          "name": "size",
+          "type": "Option<u64>",
+        },
+        {
+          "name": "offset",
+          "type": "Option<u64>",
         },
       ],
-      type: "Vec<P2PBorrow>",
+      "type": "Vec<P2PBorrow>",
     },
-    loans: {
-      params: [
+    "aliveBorrows": {
+      "params": [
         {
-          name: "size",
-          type: "Option<u64>",
+          "name": "size",
+          "type": "Option<u64>",
         },
         {
-          name: "offset",
-          type: "Option<u64>",
+          "name": "offset",
+          "type": "Option<u64>",
         },
       ],
-      type: "Vec<P2PLoan>",
+      "type": "Vec<P2PBorrow>",
     },
-    userLoans: {
-      params: [
+    "loans": {
+      "params": [
         {
-          name: "who",
-          type: "AccountId",
+          "name": "size",
+          "type": "Option<u64>",
         },
         {
-          name: "size",
-          type: "Option<u64>",
-        },
-        {
-          name: "offset",
-          type: "Option<u64>",
+          "name": "offset",
+          "type": "Option<u64>",
         },
       ],
-      type: "Vec<P2PLoan>",
+      "type": "Vec<P2PLoan>",
     },
-    aliveLoans: {
-      params: [
+    "userLoans": {
+      "params": [
         {
-          name: "size",
-          type: "Option<u64>",
+          "name": "who",
+          "type": "AccountId",
         },
         {
-          name: "offset",
-          type: "Option<u64>",
+          "name": "size",
+          "type": "Option<u64>",
+        },
+        {
+          "name": "offset",
+          "type": "Option<u64>",
         },
       ],
-      type: "Vec<P2PLoan>",
+      "type": "Vec<P2PLoan>",
     },
+    "aliveLoans": {
+      "params": [
+        {
+          "name": "size",
+          "type": "Option<u64>",
+        },
+        {
+          "name": "offset",
+          "type": "Option<u64>",
+        },
+      ],
+      "type": "Vec<P2PLoan>",
+    }
   }
 }
 ```
