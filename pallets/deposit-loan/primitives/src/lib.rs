@@ -94,13 +94,28 @@ where
     pub fn get_ltv(
         collateral_amount: Balance,
         loan_amount: Balance,
-        btc_price: PriceInUSDT,
+        collection_price: u64,
+        collateral_price: u64,
     ) -> LTV {
-        let btc_price_in_balance = <Balance as TryFrom<u128>>::try_from(btc_price as u128)
+        let collateral_price = <Balance as TryFrom<u128>>::try_from(collateral_price as u128)
             .ok()
             .unwrap();
-        let ltv = (loan_amount * Balance::from(PRICE_PREC) * Balance::from(LTV_PREC))
-            / (collateral_amount * btc_price_in_balance);
+        let ltv = (loan_amount * Balance::from(collection_price as u32) * Balance::from(PRICE_PREC) * Balance::from(LTV_PREC))
+            / (collateral_amount * collateral_price);
         TryInto::<LTV>::try_into(ltv).ok().unwrap()
     }
+}
+
+#[derive(Debug, Encode, Decode, Clone, PartialEq, Eq)]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+pub struct TradingPair<A> {
+    pub collateral: A,
+    pub borrow: A,
+}
+
+#[derive(Debug, Encode, Decode, Clone, PartialEq, Eq)]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+pub struct TradingPairPrices {
+    pub borrow_asset_price: u64,
+    pub collateral_asset_price: u64,
 }

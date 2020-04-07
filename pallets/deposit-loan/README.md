@@ -68,3 +68,22 @@ api.tx.depositLoan.add_collateral(loan_id: LoanId, amount: T::Balance)
 **draw some assets from an existing loan**
 
 api.tx.depositLoan.draw(loan_id: LoanId, amount: T::Balance)
+
+## Errors
+
+```
+Error::Paused => 0,
+Error::NotEnoughBalance => 1,
+Error::SavingTypeNotAllowed => 2,
+Error::UnknowAssetId => 3,
+Error::TradingPairPriceMissing => 4,
+Error::MinCollateralAmount => 5,
+Error::UnknownLoanId => 6,
+Error::NotLoanOwner => 7,
+Error::LoanInLiquidation => 8,
+Error::LoanNotInLiquidation => 9,
+Error::TotalCollateralUnderflow => 10,
+Error::ReachLoanCap => 11,
+Error::InvalidCollateralLoanAmounts => 12,
+Error::OverLTVLimit => 13,
+```
