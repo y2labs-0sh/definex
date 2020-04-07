@@ -44,7 +44,7 @@ impl From<Error> for String {
 
 /// P2P RPC methods
 #[rpc]
-pub trait P2PApi<BlockHash, BorrowsResult, LoansResult> {
+pub trait P2PApi<BlockHash, AccountId, BorrowsResult, LoansResult> {
     #[rpc(name = "pToP_borrows")]
     fn borrows(
         &self,
@@ -53,8 +53,42 @@ pub trait P2PApi<BlockHash, BorrowsResult, LoansResult> {
         at: Option<BlockHash>,
     ) -> Result<BorrowsResult>;
 
+    #[rpc(name = "pToP_userBorrows")]
+    fn user_borrows(
+        &self,
+        who: AccountId,
+        size: Option<u64>,
+        offset: Option<u64>,
+        at: Option<BlockHash>,
+    ) -> Result<BorrowsResult>;
+
+    #[rpc(name = "pToP_aliveBorrows")]
+    fn alive_borrows(
+        &self,
+        size: Option<u64>,
+        offset: Option<u64>,
+        at: Option<BlockHash>,
+    ) -> Result<BorrowsResult>;
+
     #[rpc(name = "pToP_loans")]
     fn loans(
+        &self,
+        size: Option<u64>,
+        offset: Option<u64>,
+        at: Option<BlockHash>,
+    ) -> Result<LoansResult>;
+
+    #[rpc(name = "pToP_userLoans")]
+    fn user_loans(
+        &self,
+        who: AccountId,
+        size: Option<u64>,
+        offset: Option<u64>,
+        at: Option<BlockHash>,
+    ) -> Result<LoansResult>;
+
+    #[rpc(name = "pToP_aliveLoans")]
+    fn alive_loans(
         &self,
         size: Option<u64>,
         offset: Option<u64>,
@@ -77,6 +111,7 @@ impl<C, B> P2P<C, B> {
 impl<C, Block, AssetId, Balance, BlockNumber, AccountId>
     P2PApi<
         <Block as BlockT>::Hash,
+        AccountId,
         Vec<P2PBorrow<AssetId, Balance, BlockNumber, AccountId>>,
         Vec<P2PLoan<AssetId, Balance, BlockNumber, AccountId>>,
     > for P2P<C, Block>
@@ -105,16 +140,46 @@ where
                 data: Some(format!("{:?}", e).into()),
             })
             .unwrap();
-        match list {
-            None => {
-                return Err(RPCError {
-                    code: ErrorCode::ServerError(Error::NoBorrows.into()),
-                    message: Error::NoBorrows.into(),
-                    data: None,
-                });
-            }
-            Some(list) => Ok(list),
-        }
+        Ok(list)
+    }
+
+    fn user_borrows(
+        &self,
+        who: AccountId,
+        size: Option<u64>,
+        offset: Option<u64>,
+        at: Option<<Block as BlockT>::Hash>,
+    ) -> Result<Vec<P2PBorrow<AssetId, Balance, BlockNumber, AccountId>>> {
+        let api = self.client.runtime_api();
+        let at = BlockId::hash(at.unwrap_or_else(|| self.client.info().best_hash));
+        let list = api
+            .get_user_borrows(&at, who, size, offset)
+            .map_err(|e| RPCError {
+                code: ErrorCode::ServerError(Error::RuntimeError.into()),
+                message: Error::RuntimeError.into(),
+                data: Some(format!("{:?}", e).into()),
+            })
+            .unwrap();
+        Ok(list)
+    }
+
+    fn alive_borrows(
+        &self,
+        size: Option<u64>,
+        offset: Option<u64>,
+        at: Option<<Block as BlockT>::Hash>,
+    ) -> Result<Vec<P2PBorrow<AssetId, Balance, BlockNumber, AccountId>>> {
+        let api = self.client.runtime_api();
+        let at = BlockId::hash(at.unwrap_or_else(|| self.client.info().best_hash));
+        let list = api
+            .get_alive_borrows(&at, size, offset)
+            .map_err(|e| RPCError {
+                code: ErrorCode::ServerError(Error::RuntimeError.into()),
+                message: Error::RuntimeError.into(),
+                data: Some(format!("{:?}", e).into()),
+            })
+            .unwrap();
+        Ok(list)
     }
 
     fn loans(
@@ -133,15 +198,45 @@ where
                 data: Some(format!("{:?}", e).into()),
             })
             .unwrap();
-        match list {
-            None => {
-                return Err(RPCError {
-                    code: ErrorCode::ServerError(Error::NoBorrows.into()),
-                    message: Error::NoBorrows.into(),
-                    data: None,
-                });
-            }
-            Some(list) => Ok(list),
-        }
+        Ok(list)
+    }
+
+    fn user_loans(
+        &self,
+        who: AccountId,
+        size: Option<u64>,
+        offset: Option<u64>,
+        at: Option<<Block as BlockT>::Hash>,
+    ) -> Result<Vec<P2PLoan<AssetId, Balance, BlockNumber, AccountId>>> {
+        let api = self.client.runtime_api();
+        let at = BlockId::hash(at.unwrap_or_else(|| self.client.info().best_hash));
+        let list = api
+            .get_user_loans(&at, who, size, offset)
+            .map_err(|e| RPCError {
+                code: ErrorCode::ServerError(Error::RuntimeError.into()),
+                message: Error::RuntimeError.into(),
+                data: Some(format!("{:?}", e).into()),
+            })
+            .unwrap();
+        Ok(list)
+    }
+
+    fn alive_loans(
+        &self,
+        size: Option<u64>,
+        offset: Option<u64>,
+        at: Option<<Block as BlockT>::Hash>,
+    ) -> Result<Vec<P2PLoan<AssetId, Balance, BlockNumber, AccountId>>> {
+        let api = self.client.runtime_api();
+        let at = BlockId::hash(at.unwrap_or_else(|| self.client.info().best_hash));
+        let list = api
+            .get_alive_loans(&at, size, offset)
+            .map_err(|e| RPCError {
+                code: ErrorCode::ServerError(Error::RuntimeError.into()),
+                message: Error::RuntimeError.into(),
+                data: Some(format!("{:?}", e).into()),
+            })
+            .unwrap();
+        Ok(list)
     }
 }

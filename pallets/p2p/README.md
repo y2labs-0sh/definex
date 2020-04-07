@@ -12,53 +12,106 @@ In this DeFi pallet, there are 3 major roles:
 
 ## RPCs
 
-api.rpc.pToP.borrows() : []P2PBorrow
+api.rpc.pToP.borrows(size: Optional, offset: Optional) : []P2PBorrow
 
-api.rpc.pToP.loans() : []P2PLoan
+api.rpc.pToP.userBorrows(who: AccountId, size: Optional, offset: Optional) : []P2PBorrow
+
+api.rpc.pToP.aliveBorrows(size: Optional, offset: Optional) : []P2PBorrow
+
+api.rpc.pToP.loans(size: Optional, offset: Optional) : []P2PLoan
+
+api.rpc.pToP.userLoans(who: AccountId, size: Optional, offset: Optional) : []P2PLoan
+
+api.rpc.pToP.aliveLoans(size: Optional, offset: Optional) : []P2PLoan
 
 ```json
 {
-  "genericAsset": {
-    "symbolsList": {
-      "params": [],
-      "type": "Vec<(AssetId, String)>"
-    },
-    "userAssets": {
-      "params": [
-        {
-          "name": "who",
-          "type": "AccountId"
-        }
-      ],
-      "type": "Vec<UserAssets<AssetId, Balance>>"
-    }
-  },
   "pToP": {
     "borrows": {
       "params": [
         {
           "name": "size",
-          "type": "Option<u64>"
+          "type": "Option<u64>",
         },
         {
           "name": "offset",
-          "type": "Option<u64>"
-        }
+          "type": "Option<u64>",
+        },
       ],
-      "type": "Vec<P2PBorrow>"
+      "type": "Vec<P2PBorrow>",
+    },
+    "userBorrows": {
+      "params": [
+        {
+          "name": "who",
+          "type": "AccountId",
+        },
+        {
+          "name": "size",
+          "type": "Option<u64>",
+        },
+        {
+          "name": "offset",
+          "type": "Option<u64>",
+        },
+      ],
+      "type": "Vec<P2PBorrow>",
+    },
+    "aliveBorrows": {
+      "params": [
+        {
+          "name": "size",
+          "type": "Option<u64>",
+        },
+        {
+          "name": "offset",
+          "type": "Option<u64>",
+        },
+      ],
+      "type": "Vec<P2PBorrow>",
     },
     "loans": {
       "params": [
         {
           "name": "size",
-          "type": "Option<u64>"
+          "type": "Option<u64>",
         },
         {
           "name": "offset",
-          "type": "Option<u64>"
-        }
+          "type": "Option<u64>",
+        },
       ],
-      "type": "Vec<P2PLoan>"
+      "type": "Vec<P2PLoan>",
+    },
+    "userLoans": {
+      "params": [
+        {
+          "name": "who",
+          "type": "AccountId",
+        },
+        {
+          "name": "size",
+          "type": "Option<u64>",
+        },
+        {
+          "name": "offset",
+          "type": "Option<u64>",
+        },
+      ],
+      "type": "Vec<P2PLoan>",
+    },
+    "aliveLoans": {
+      "params": [
+        {
+          "name": "size",
+          "type": "Option<u64>",
+        },
+        {
+          "name": "offset",
+          "type": "Option<u64>",
+        },
+      ],
+      "type": "Vec<P2PLoan>",
     }
   }
 }

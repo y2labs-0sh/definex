@@ -278,8 +278,8 @@ decl_event!(
         CheckingAliveBorrowsDone,
         CheckingAliveLoansDone,
 
-        BorrowListed(P2PBorrow),
-        BorrowUnlisted(P2PBorrowId),
+        BorrowCreated(P2PBorrow),
+        BorrowCanceled(P2PBorrowId),
         LoanCreated(P2PLoan),
         LoanLiquidated(P2PLoanId),
         LoanRepaid(P2PLoanId),
@@ -298,10 +298,70 @@ decl_event!(
 
 impl<T: Trait> Module<T> {
     /// immutable for RPC
+
+    /// reverse the alive borrow list
+    pub fn get_alive_borrows(size: Option<u64>, offset: Option<u64>) -> Vec<P2PBorrow<T::AssetId, T::Balance, T::BlockNumber, T::AccountId>> {
+        let offset = offset.unwrap_or(0) as usize;
+        let size = size.unwrap_or(10) as usize;
+        let mut res = Vec::with_capacity(size);
+        let alive_borrow_ids = AliveBorrowIds::get();
+
+        for i in alive_borrow_ids.iter().rev().skip(offset).take(size) {
+            res.push(<Borrows<T>>::get(i));
+        }
+
+        res
+    }
+
+
+    /// reverse the user's borrow list,
+    pub fn get_user_borrows(who: T::AccountId, size: Option<u64>, offset: Option<u64>) -> Vec<P2PBorrow<T::AssetId, T::Balance, T::BlockNumber, T::AccountId>> {
+        let offset = offset.unwrap_or(0) as usize;
+        let size = size.unwrap_or(10) as usize;
+        let mut res = Vec::with_capacity(size);
+        let account_borrow_ids = <BorrowIdsByAccountId<T>>::get(&who);
+
+        for i in account_borrow_ids.iter().rev().skip(offset).take(size) {
+            res.push(<Borrows<T>>::get(i));
+        }
+
+        res
+    }
+
+    /// the alive loan list
+    pub fn get_alive_loans(size: Option<u64>, offset: Option<u64>) -> Vec<P2PLoan<T::AssetId, T::Balance, T::BlockNumber, T::AccountId>> {
+        let offset = offset.unwrap_or(0) as usize;
+        let size = size.unwrap_or(10) as usize;
+        let mut res = Vec::with_capacity(size);
+
+        for account_id in <AccountIdsWithLiveLoans<T>>::get() {
+            for id in <AliveLoanIdsByAccountId<T>>::get(&account_id) {
+                res.push(<Loans<T>>::get(&id));
+            }
+        }
+
+        res.into_iter().skip(offset).take(size).collect()
+    }
+
+
+    /// the user's loan list with no rev
+    pub fn get_user_loans(who: T::AccountId, size: Option<u64>, offset: Option<u64>) -> Vec<P2PLoan<T::AssetId, T::Balance, T::BlockNumber, T::AccountId>> {
+        let offset = offset.unwrap_or(0) as usize;
+        let size = size.unwrap_or(10) as usize;
+        let mut res = Vec::with_capacity(size);
+        let account_loan_ids = <LoanIdsByAccountId<T>>::get(&who);
+        for i in account_loan_ids.iter().skip(offset).take(size) {
+            res.push(<Loans<T>>::get(i));
+        }
+        res
+    }
+
+    /// get_borrows will just iterate over <Borrows>, and since IterableStorageMap doesn't provide rev()
+    /// we can only go through the list from the very begin.
     pub fn get_borrows(
         size: Option<u64>,
         offset: Option<u64>,
-    ) -> Option<Vec<P2PBorrow<T::AssetId, T::Balance, T::BlockNumber, T::AccountId>>> {
+    ) -> Vec<P2PBorrow<T::AssetId, T::Balance, T::BlockNumber, T::AccountId>> {
         let offset = offset.unwrap_or(0);
         let size = size.unwrap_or(10);
         let mut res = Vec::with_capacity(size as usize);
@@ -313,18 +373,15 @@ impl<T: Trait> Module<T> {
             res.push(b);
         }
 
-        if res.len() > 0 {
-            Some(res)
-        } else {
-            None
-        }
+        res
     }
 
-    /// immutable for RPC
+    /// get_loans will just iterate over <Loans>, and since IterableStorageMap doesn't provide rev()
+    /// we can only go through the list from the very begin.
     pub fn get_loans(
         size: Option<u64>,
         offset: Option<u64>,
-    ) -> Option<Vec<P2PLoan<T::AssetId, T::Balance, T::BlockNumber, T::AccountId>>> {
+    ) -> Vec<P2PLoan<T::AssetId, T::Balance, T::BlockNumber, T::AccountId>> {
         let offset = offset.unwrap_or(0);
         let size = size.unwrap_or(10);
         let mut res = Vec::with_capacity(size as usize);
@@ -333,11 +390,7 @@ impl<T: Trait> Module<T> {
             res.push(l);
         }
 
-        if res.len() > 0 {
-            Some(res)
-        } else {
-            None
-        }
+        res
     }
 
     fn generate_borrow_id() -> P2PBorrowId {
@@ -570,7 +623,7 @@ impl<T: Trait> Module<T> {
         AliveBorrowIds::append_or_put(vec![borrow_id.clone()]);
         <BorrowIdsByAccountId<T>>::append_or_insert(&who, vec![borrow_id.clone()]);
 
-        Self::deposit_event(RawEvent::BorrowListed(b));
+        Self::deposit_event(RawEvent::BorrowCreated(b));
         Ok(())
     }
 
@@ -603,8 +656,11 @@ impl<T: Trait> Module<T> {
                 .filter(|v| *v != borrow_id)
                 .collect::<Vec<_>>();
         });
+        <Borrows<T>>::mutate(borrow_id, |v| {
+            v.status = P2PBorrowStatus::Canceled;
+        });
 
-        Self::deposit_event(RawEvent::BorrowUnlisted(borrow_id));
+        Self::deposit_event(RawEvent::BorrowCanceled(borrow_id));
         Ok(())
     }
 

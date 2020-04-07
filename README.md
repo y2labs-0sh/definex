@@ -190,27 +190,87 @@ our web wallet.
       "params": [
         {
           "name": "size",
-          "type": "Option<u64>"
+          "type": "Option<u64>",
         },
         {
           "name": "offset",
-          "type": "Option<u64>"
-        }
+          "type": "Option<u64>",
+        },
       ],
-      "type": "Vec<P2PBorrow>"
+      "type": "Vec<P2PBorrow>",
+    },
+    "userBorrows": {
+      "params": [
+        {
+          "name": "who",
+          "type": "AccountId",
+        },
+        {
+          "name": "size",
+          "type": "Option<u64>",
+        },
+        {
+          "name": "offset",
+          "type": "Option<u64>",
+        },
+      ],
+      "type": "Vec<P2PBorrow>",
+    },
+    "aliveBorrows": {
+      "params": [
+        {
+          "name": "size",
+          "type": "Option<u64>",
+        },
+        {
+          "name": "offset",
+          "type": "Option<u64>",
+        },
+      ],
+      "type": "Vec<P2PBorrow>",
     },
     "loans": {
       "params": [
         {
           "name": "size",
-          "type": "Option<u64>"
+          "type": "Option<u64>",
         },
         {
           "name": "offset",
-          "type": "Option<u64>"
-        }
+          "type": "Option<u64>",
+        },
       ],
-      "type": "Vec<P2PLoan>"
+      "type": "Vec<P2PLoan>",
+    },
+    "userLoans": {
+      "params": [
+        {
+          "name": "who",
+          "type": "AccountId",
+        },
+        {
+          "name": "size",
+          "type": "Option<u64>",
+        },
+        {
+          "name": "offset",
+          "type": "Option<u64>",
+        },
+      ],
+      "type": "Vec<P2PLoan>",
+    },
+    "aliveLoans": {
+      "params": [
+        {
+          "name": "size",
+          "type": "Option<u64>",
+        },
+        {
+          "name": "offset",
+          "type": "Option<u64>",
+        },
+      ],
+      "type": "Vec<P2PLoan>",
     }
   }
 }
