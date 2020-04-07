@@ -208,6 +208,7 @@ pub struct P2PBorrow<AssetId, Balance, BlockNumber, AccountId> {
 pub enum P2PBorrowStatus {
     Alive,
     Taken,
+    Canceled,
     Completed,
     Dead,
     Liquidated,
