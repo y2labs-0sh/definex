@@ -201,7 +201,7 @@ parameter_types! {
     pub const TransactionBaseFee: Balance = 1 * CENTS;
     pub const TransactionByteFee: Balance = 10 * MILLICENTS;
     // setting this to zero will disable the weight fee.
-    pub const WeightFeeCoefficient: Balance = 1_000;
+    pub const WeightFeeCoefficient: Balance = 1_;
     // for a sane configuration, this should always be less than `AvailableBlockRatio`.
     pub const TargetBlockFullness: Perbill = Perbill::from_percent(25);
 }
