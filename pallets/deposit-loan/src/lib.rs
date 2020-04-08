@@ -533,6 +533,7 @@ impl<T: Trait> Module<T> {
 
         let total_dtoken = Self::total_dtoken() - user_will_get;
         let market_dtoken = Self::market_dtoken() - user_dtoken_amount;
+        <UserDtoken<T>>::insert(&who, T::Balance::from(0));
 
         <MarketDtoken<T>>::put(market_dtoken);
         <TotalDtoken<T>>::put(total_dtoken);
@@ -595,9 +596,7 @@ impl<T: Trait> Module<T> {
 
                 let collateral_balance_available = actual_collateral_amount
                     - loan_amount * price_pair_borrow_asset_price
-                        / <T::Balance as TryFrom<u128>>::try_from(price_pair.collateral_asset_price as u128)
-                            .ok()
-                            .unwrap();
+                        / <T::Balance as TryFrom<u128>>::try_from(price_pair.collateral_asset_price as u128).ok().unwrap();
 
                 // transfer collateral to pawnshop
                 <generic_asset::Module<T>>::make_transfer_with_event(
@@ -1111,58 +1110,33 @@ impl<T: Trait> Module<T> {
         let collection_asset_id = Self::collection_asset_id();
         let collection_account_id = Self::collection_account_id();
         let total_loan = Self::total_loan();
-        let total_loan = TryInto::<u128>::try_into(total_loan).ok().unwrap();
 
         let total_deposit =
             <generic_asset::Module<T>>::free_balance(&collection_asset_id, &collection_account_id)
                 + Self::total_loan();
-        let total_deposit = TryInto::<u128>::try_into(total_deposit).ok().unwrap();
 
         let current_time = <timestamp::Module<T>>::get();
         <BonusTime<T>>::put(current_time);
+        let last_bonus_time: T::Moment = Self::bonus_time();
 
         if !(total_deposit + total_loan).is_zero() {
-            let utilization_rate_x = total_loan
-                .checked_mul(10_u128.pow(8))
-                .expect("saving share overflow")
-                / (total_deposit + total_loan);
 
-            // This is the real interest rate * 10^8
-            let loan_interest_rate_current = if utilization_rate_x < 4000_00000 {
-                (utilization_rate_x + 5000_0000) / 10
-            } else if utilization_rate_x >= 8000_0000 {
-                (30 * utilization_rate_x.pow(6)
-                    + 10 * utilization_rate_x.pow(3) * 10_u128.pow(24)
-                    + 6 * 10_u128.pow(48))
-                    / 10_u128.pow(42)
-            } else {
-                (20 * utilization_rate_x * 10_u128.pow(8)) / 10_u128.pow(2)
-            };
-
-            let loan_interest_rate_current: T::Balance =
-                TryFrom::<u128>::try_from(loan_interest_rate_current)
-                    .ok()
-                    .unwrap();
-
-            let last_bonus_time: T::Moment = Self::bonus_time();
-
-            let time_duration = TryInto::<u32>::try_into(current_time - last_bonus_time)
-                .ok()
-                .unwrap();
-            let total_loan: T::Balance = TryFrom::<u128>::try_from(total_loan).ok().unwrap();
+            let current_loan_interest_rate = Self::current_loan_interest_rate();
+            let time_duration = TryInto::<u32>::try_into(current_time - last_bonus_time).ok().unwrap();
 
             let interest_generated = T::Balance::from(time_duration)
                 * total_loan
-                * loan_interest_rate_current
+                * current_loan_interest_rate
                 / T::Balance::from(SEC_PER_DAY)
-                / T::Balance::from(DAYS_PER_YEAR);
+                / T::Balance::from(DAYS_PER_YEAR)
+                / T::Balance::from(1_0000_0000);
 
             let all_loans = <LoanIdWithAllLoans>::get();
             for loan_id in all_loans {
                 let loan = <Loans<T>>::get(&loan_id);
-            // for (loan_id, loan) in <Loans<T>>::enumerate() {
+
                 let amount = interest_generated * loan.loan_balance_total
-                    / (total_loan * T::Balance::from(10_u32.pow(8)));
+                    / total_loan;
 
                 Self::draw_from_loan(loan.who.clone(), loan_id, amount).unwrap_or_default();
 
@@ -1179,15 +1153,58 @@ impl<T: Trait> Module<T> {
                 });
             }
 
-            <LoanInterestRateCurrent<T>>::put(loan_interest_rate_current);
-            let current_interest_rate = interest_generated
-                / T::Balance::from(total_deposit as u32)
-                * T::Balance::from(DAYS_PER_YEAR)
-                * T::Balance::from(SEC_PER_DAY)
-                * T::Balance::from(10_u32.pow(8));
+            <LoanInterestRateCurrent<T>>::put(current_loan_interest_rate);
 
-            <SavingInterestRate<T>>::put(current_interest_rate);
+            let current_saving_interest_rate = Self::current_saving_interest_rate();
+
+            <SavingInterestRate<T>>::put(current_saving_interest_rate);
         }
+    }
+
+    // Obtain current annualized loan interest rate
+    #[rustfmt::skip]
+    fn current_loan_interest_rate() -> T::Balance {
+
+        let collection_asset_id = Self::collection_asset_id();
+        let collection_account_id = Self::collection_account_id();
+
+        let total_deposit = <generic_asset::Module<T>>::free_balance(&collection_asset_id, &collection_account_id)
+                + Self::total_loan();
+        let total_loan = Self::total_loan();
+
+        let mut loan_interest_rate_current = T::Balance::from(0);
+
+        if !(total_deposit + total_loan).is_zero() {
+            
+            let utilization_rate_x: T::Balance = total_loan.checked_mul(&T::Balance::from(10_u32.pow(8))).expect("saving share overflow")
+                / (total_deposit + total_loan);
+
+            // This is the real interest rate * 10^8
+            loan_interest_rate_current = if utilization_rate_x < T::Balance::from(4000_0000) {
+                (utilization_rate_x + T::Balance::from(5000_0000)) / T::Balance::from(10)
+            } else if utilization_rate_x >= T::Balance::from(8000_0000) {
+                let utilization_rate_x_pow3 = utilization_rate_x * utilization_rate_x * utilization_rate_x;
+                let utilization_rate_x_pow6 = utilization_rate_x_pow3 * utilization_rate_x_pow3;
+                (utilization_rate_x_pow6 * 30.into() +  utilization_rate_x_pow3 * T::Balance::from(10_u32.pow(25)) + T::Balance::from(6) * <T::Balance as TryFrom<u128>>::try_from(10_u128.pow(48)).ok().unwrap()) 
+                / <T::Balance as TryFrom<u128>>::try_from(10_u128.pow(42)).ok().unwrap()
+            } else {
+                (T::Balance::from(20) * utilization_rate_x + T::Balance::from(1_0000_0000)) / T::Balance::from(100)
+            };
+        }
+        loan_interest_rate_current
+    }
+
+    // Obtain current annualized saving interest rate
+    fn current_saving_interest_rate() -> T::Balance {
+
+        let collection_asset_id = Self::collection_asset_id();
+        let collection_account_id = Self::collection_account_id();
+        let total_deposit = <generic_asset::Module<T>>::free_balance(&collection_asset_id, &collection_account_id)
+            + Self::total_loan();
+
+        // Calculate deposit interest: deposit interest rate = borrowing interest * total borrowing / total deposit
+        let current_saving_interest_rate = Self::current_loan_interest_rate() * Self::total_loan() / total_deposit;
+        current_saving_interest_rate
     }
 
     fn get_next_loan_id() -> LoanId {
