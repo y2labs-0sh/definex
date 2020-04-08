@@ -201,6 +201,8 @@ decl_error! {
         MissingLock,
         /// No lock meets the required amount
         NoLockMeetRequirement,
+        ///
+        InvalidLockedBalance,
     }
 }
 
@@ -366,7 +368,7 @@ decl_event!(
 		<T as Trait>::AssetId,
 		AssetOptions = AssetOptions<<T as Trait>::Balance, <T as frame_system::Trait>::AccountId>
 	{
-		  /// Asset created (asset_id, creator, asset_options).
+		/// Asset created (asset_id, creator, asset_options).
 		  Created(AssetId, AccountId, AssetOptions),
 		  /// Asset transfer succeeded (asset_id, from, to, amount).
 		  Transferred(AssetId, AccountId, AccountId, Balance),
@@ -376,10 +378,12 @@ decl_event!(
 		  Minted(AssetId, AccountId, Balance),
 		  /// Asset burned (asset_id, account, amount).
 		  Burned(AssetId, AccountId, Balance),
-      ///
-      Reserved(AssetId, AccountId, Balance, u128),
-      ///
-      Unreserved(AssetId, AccountId, Balance, u128),
+        ///
+        Reserved(AssetId, AccountId, Balance, u128),
+        ///
+        Unreserved(AssetId, AccountId, Balance, u128),
+        ///
+        IncreaseReserved(AssetId, AccountId, Balance, u128),
 	}
 );
 
@@ -606,11 +610,42 @@ impl<T: Trait> Module<T> {
         Ok(lock_id)
     }
 
-    /// Moves up to `amount` from reserved balance to free balance. This function cannot fail.
-    ///
-    /// As many assets up to `amount` will be moved as possible. If the reserve balance of `who`
-    /// is less than `amount`, then the remaining amount will be returned.
-    /// NOTE: This is different behavior than `reserve`.
+    /// ensure amount free balance meets the increasement,
+    /// move the amount into reserved,
+    /// update the corresponding balance lock
+    pub fn increase_reserved_balance(
+        asset_id:&T::AssetId,
+        lock_id: u128,
+        who: &T::AccountId,
+        amount: T::Balance,
+    ) -> Result<(), &'static str>{
+        ensure!(Self::lock_id_exists(asset_id, who, lock_id), Error::<T>::MissingLock);
+
+        let original_reserve_balance = Self::reserved_balance(asset_id, who);
+        let original_free_balance = Self::free_balance(asset_id, who);
+        ensure!(
+            original_free_balance >= amount,
+            Error::<T>::InsufficientBalance
+        );
+        let new_reserve_balance = original_reserve_balance + amount;
+        let new_free_balance = original_free_balance - amount;
+        Self::set_reserved_balance(asset_id, who, new_reserve_balance);
+        Self::set_free_balance(asset_id, who, new_free_balance);
+
+        let idf = Self::generic_asset_lock_identifier(asset_id);
+        <Locks<T>>::mutate(&idf, who, |v| {
+            for l in v.iter_mut() {
+                l.amount += amount;
+            }
+        });
+
+        Self::deposit_event(RawEvent::IncreaseReserved(asset_id.clone(), who.clone(), amount, lock_id));
+
+        Ok(())
+    }
+
+    /// Moves up to `amount` from reserved balance to free balance.
+    /// would fail if the lock with a balance that is short
     pub fn unreserve(
         asset_id: &T::AssetId,
         who: &T::AccountId,
@@ -623,22 +658,17 @@ impl<T: Trait> Module<T> {
             Error::<T>::InsufficientReservedBalance
         );
 
-        let mut valid_lock_id = None;
+        let mut valid_lock_id: Option<u128> = None;
         let idf = Self::generic_asset_lock_identifier(asset_id);
         match lock_id {
             Some(lock_id) => {
-                if !Self::lock_id_exists(idf, who, lock_id) {
-                    return Err(Error::<T>::MissingLock.into());
-                } else {
-                    valid_lock_id = Some(lock_id);
-                }
+                ensure!(Self::lock_id_exists(asset_id, who, lock_id), Error::<T>::MissingLock);
+                ensure!(Self::locked_balance(asset_id, who, lock_id).unwrap() == amount, Error::<T>::InvalidLockedBalance);
+                valid_lock_id = Some(lock_id);
             }
             None => {
-                if let Some(lock_id) = Self::find_lock_id_by_amount(idf, who, amount) {
-                    valid_lock_id = Some(lock_id);
-                } else {
-                    return Err(Error::<T>::NoLockMeetRequirement.into());
-                }
+                valid_lock_id = Self::find_lock_id_by_amount(asset_id, who, amount);
+                ensure!(valid_lock_id.is_some(), Error::<T>::NoLockMeetRequirement);
             }
         }
 
@@ -856,38 +886,6 @@ impl<T: Trait> Module<T> {
         lock_id
     }
 
-    #[allow(dead_code)]
-    fn extend_lock(
-        _id: LockIdentifier,
-        _who: &T::AccountId,
-        _amount: T::Balance,
-        _reasons: WithdrawReasons,
-    ) {
-        // let mut new_lock = Some(BalanceLock {
-        //     id,
-        //     amount,
-        //     reasons,
-        // });
-        // let mut locks = <Module<T>>::locks(who)
-        //     .into_iter()
-        //     .filter_map(|l| {
-        //         if l.id == id {
-        //             new_lock.take().map(|nl| BalanceLock {
-        //                 id: l.id,
-        //                 amount: l.amount.max(nl.amount),
-        //                 reasons: l.reasons | nl.reasons,
-        //             })
-        //         } else {
-        //             Some(l)
-        //         }
-        //     })
-        //     .collect::<Vec<_>>();
-        // if let Some(lock) = new_lock {
-        //     locks.push(lock)
-        // }
-        // <Locks<T>>::insert(who, locks);
-    }
-
     fn remove_lock(identifier: LockIdentifier, who: &T::AccountId, lock_id: u128) {
         let mut first = true;
         let locks = <Locks<T>>::get(identifier, who);
@@ -908,8 +906,18 @@ impl<T: Trait> Module<T> {
         }
     }
 
-    pub fn lock_id_exists(identifier: LockIdentifier, who: &T::AccountId, lock_id: u128) -> bool {
-        let locks = <Locks<T>>::get(identifier, who);
+    pub fn find_lock_by_id(asset_id: &T::AssetId, who: &T::AccountId, lock_id: u128) -> Option<BalanceLock<T::Balance, T::AssetId>> {
+        let locks = <Locks<T>>::get(Self::generic_asset_lock_identifier(asset_id), who);
+        for l in locks {
+            if l.id == lock_id {
+                return Some(l);
+            }
+        }
+        return None;
+    }
+
+    pub fn lock_id_exists(asset_id: &T::AssetId, who: &T::AccountId, lock_id: u128) -> bool {
+        let locks = <Locks<T>>::get(Self::generic_asset_lock_identifier(asset_id), who);
         for l in locks {
             if l.id == lock_id {
                 return true;
@@ -919,11 +927,11 @@ impl<T: Trait> Module<T> {
     }
 
     pub fn find_lock_id_by_amount(
-        identifier: LockIdentifier,
+        asset_id: &T::AssetId,
         who: &T::AccountId,
         amount: T::Balance,
     ) -> Option<u128> {
-        let locks = <Locks<T>>::get(identifier, who);
+        let locks = <Locks<T>>::get(Self::generic_asset_lock_identifier(asset_id), who);
         for l in locks {
             if l.amount == amount {
                 return Some(l.id);

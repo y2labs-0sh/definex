@@ -88,7 +88,7 @@ This is just for frontend developer
         "id": "P2PBorrowId",
         "lock_id": "u128",
         "who": "AccountId",
-        "status": "BorrowStatus",
+        "status": "P2PBorrowStatus",
         "borrow_asset_id": "AssetId",
         "collateral_asset_id": "AssetId",
         "borrow_balance": "Balance",
