@@ -535,3 +535,121 @@ fn liquidate_works() {
         assert_eq!(loan.status, P2PLoanHealth::Liquidated);
     });
 }
+
+#[test]
+fn add_works() {
+    let root: <Test as system::Trait>::AccountId = get_from_seed::<sr25519::Public>("Root");
+    let eve: <Test as system::Trait>::AccountId = get_from_seed::<sr25519::Public>("Eve");
+    let dave: <Test as system::Trait>::AccountId = get_from_seed::<sr25519::Public>("Dave");
+
+    ExtBuilder::default().build().execute_with(|| {
+        assert_ok!(GenericAssetTest::mint_free(
+            &BTC,
+            &root,
+            &eve,
+            &<<Test as generic_asset::Trait>::Balance as TryFrom<u64>>::try_from(1000_00000000)
+                .ok()
+                .unwrap(),
+        ));
+        assert_ok!(GenericAssetTest::mint_free(
+            &USDT,
+            &root,
+            &dave,
+            &<<Test as generic_asset::Trait>::Balance as TryFrom<u64>>::try_from(1000_00000000)
+                .ok()
+                .unwrap(),
+        ));
+
+        let trading_pair = crate::TradingPair {
+            collateral: BTC,
+            borrow: USDT,
+        };
+        let options = crate::P2PBorrowOptions {
+            amount: <<Test as generic_asset::Trait>::Balance as TryFrom<u64>>::try_from(
+                100_00000000,
+            )
+            .ok()
+            .unwrap(),
+            terms: 10,
+            interest_rate: 20000,
+            warranty: Some(<Test as system::Trait>::BlockNumber::from(30u32)),
+        };
+        let one_btc =
+            <<Test as generic_asset::Trait>::Balance as TryFrom<u64>>::try_from(100000000)
+                .ok()
+                .unwrap();
+        let borrow_id = P2PTest::next_borrow_id();
+        assert_ok!(P2PTest::create_borrow(
+            eve,
+            one_btc,
+            trading_pair,
+            options,
+        ));
+
+        assert_ok!(P2PTest::add_collateral(eve, borrow_id, one_btc));
+    });
+}
+
+#[test]
+fn cancel_works() {
+    let root: <Test as system::Trait>::AccountId = get_from_seed::<sr25519::Public>("Root");
+    let eve: <Test as system::Trait>::AccountId = get_from_seed::<sr25519::Public>("Eve");
+    let dave: <Test as system::Trait>::AccountId = get_from_seed::<sr25519::Public>("Dave");
+
+    ExtBuilder::default().build().execute_with(|| {
+        assert_ok!(GenericAssetTest::mint_free(
+            &BTC,
+            &root,
+            &eve,
+            &<<Test as generic_asset::Trait>::Balance as TryFrom<u64>>::try_from(1000_00000000)
+                .ok()
+                .unwrap(),
+        ));
+        assert_ok!(GenericAssetTest::mint_free(
+            &USDT,
+            &root,
+            &dave,
+            &<<Test as generic_asset::Trait>::Balance as TryFrom<u64>>::try_from(1000_00000000)
+                .ok()
+                .unwrap(),
+        ));
+
+        let trading_pair = crate::TradingPair {
+            collateral: BTC,
+            borrow: USDT,
+        };
+        let options = crate::P2PBorrowOptions {
+            amount: <<Test as generic_asset::Trait>::Balance as TryFrom<u64>>::try_from(
+                100_00000000,
+            )
+            .ok()
+            .unwrap(),
+            terms: 10,
+            interest_rate: 20000,
+            warranty: Some(<Test as system::Trait>::BlockNumber::from(30u32)),
+        };
+        let one_btc =
+            <<Test as generic_asset::Trait>::Balance as TryFrom<u64>>::try_from(100000000)
+                .ok()
+                .unwrap();
+        let borrow_id = P2PTest::next_borrow_id();
+        assert_ok!(P2PTest::create_borrow(
+            eve,
+            one_btc,
+            trading_pair.clone(),
+            options.clone(),
+        ));
+
+        assert_ok!(P2PTest::remove_borrow(eve, borrow_id));
+
+        let borrow_id = P2PTest::next_borrow_id();
+        assert_ok!(P2PTest::create_borrow(
+            eve,
+            one_btc,
+            trading_pair,
+            options,
+        ));
+        assert_ok!(P2PTest::add_collateral(eve, borrow_id, one_btc));
+        assert_ok!(P2PTest::remove_borrow(eve, borrow_id));
+    });
+}

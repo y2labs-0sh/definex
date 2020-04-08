@@ -135,6 +135,8 @@ decl_error! {
         ShouldNotBeLiquidated,
         ShouldBeLiquidated,
         LoanNotWell,
+        AddCollateralNotAllowed,
+        FailToReserve,
     }
 }
 
@@ -300,7 +302,10 @@ impl<T: Trait> Module<T> {
     /// immutable for RPC
 
     /// reverse the alive borrow list
-    pub fn get_alive_borrows(size: Option<u64>, offset: Option<u64>) -> Vec<P2PBorrow<T::AssetId, T::Balance, T::BlockNumber, T::AccountId>> {
+    pub fn get_alive_borrows(
+        size: Option<u64>,
+        offset: Option<u64>,
+    ) -> Vec<P2PBorrow<T::AssetId, T::Balance, T::BlockNumber, T::AccountId>> {
         let offset = offset.unwrap_or(0) as usize;
         let size = size.unwrap_or(10) as usize;
         let mut res = Vec::with_capacity(size);
@@ -313,9 +318,12 @@ impl<T: Trait> Module<T> {
         res
     }
 
-
     /// reverse the user's borrow list,
-    pub fn get_user_borrows(who: T::AccountId, size: Option<u64>, offset: Option<u64>) -> Vec<P2PBorrow<T::AssetId, T::Balance, T::BlockNumber, T::AccountId>> {
+    pub fn get_user_borrows(
+        who: T::AccountId,
+        size: Option<u64>,
+        offset: Option<u64>,
+    ) -> Vec<P2PBorrow<T::AssetId, T::Balance, T::BlockNumber, T::AccountId>> {
         let offset = offset.unwrap_or(0) as usize;
         let size = size.unwrap_or(10) as usize;
         let mut res = Vec::with_capacity(size);
@@ -329,7 +337,10 @@ impl<T: Trait> Module<T> {
     }
 
     /// the alive loan list
-    pub fn get_alive_loans(size: Option<u64>, offset: Option<u64>) -> Vec<P2PLoan<T::AssetId, T::Balance, T::BlockNumber, T::AccountId>> {
+    pub fn get_alive_loans(
+        size: Option<u64>,
+        offset: Option<u64>,
+    ) -> Vec<P2PLoan<T::AssetId, T::Balance, T::BlockNumber, T::AccountId>> {
         let offset = offset.unwrap_or(0) as usize;
         let size = size.unwrap_or(10) as usize;
         let mut res = Vec::with_capacity(size);
@@ -343,9 +354,12 @@ impl<T: Trait> Module<T> {
         res.into_iter().skip(offset).take(size).collect()
     }
 
-
     /// the user's loan list with no rev
-    pub fn get_user_loans(who: T::AccountId, size: Option<u64>, offset: Option<u64>) -> Vec<P2PLoan<T::AssetId, T::Balance, T::BlockNumber, T::AccountId>> {
+    pub fn get_user_loans(
+        who: T::AccountId,
+        size: Option<u64>,
+        offset: Option<u64>,
+    ) -> Vec<P2PLoan<T::AssetId, T::Balance, T::BlockNumber, T::AccountId>> {
         let offset = offset.unwrap_or(0) as usize;
         let size = size.unwrap_or(10) as usize;
         let mut res = Vec::with_capacity(size);
@@ -431,30 +445,45 @@ impl<T: Trait> Module<T> {
             Error::<T>::UnknownBorrowId
         );
         let borrow = <Borrows<T>>::get(borrow_id);
-        ensure!(
-            <generic_asset::Module<T>>::free_balance(&borrow.collateral_asset_id, &who) >= amount,
-            Error::<T>::NotEnoughBalance
-        );
 
-        <generic_asset::Module<T>>::make_transfer_with_event(
-            &borrow.collateral_asset_id,
-            &who,
-            &<MoneyPool<T>>::get(),
-            amount,
-        )?;
-
-        <Borrows<T>>::mutate(&borrow_id, |v| {
-            v.collateral_balance = v.collateral_balance.checked_add(&amount).unwrap();
-        });
-        if borrow.loan_id.is_some() {
-            <Loans<T>>::mutate(borrow.loan_id.unwrap(), |v| {
-                v.collateral_balance = v.collateral_balance.checked_add(&amount).unwrap();
-            });
+        // different borrow status
+        match borrow.status {
+            P2PBorrowStatus::Alive => {
+                // alive borrows will just reserve user's collateral asset
+                // so we just move the addition into the reserved and update the lock
+                <generic_asset::Module<T>>::increase_reserved_balance(&borrow.collateral_asset_id, borrow.lock_id, &who, amount).or(Err(Error::<T>::FailToReserve))?;
+                <Borrows<T>>::mutate(&borrow_id, |v| {
+                    v.collateral_balance = v.collateral_balance.checked_add(&amount).unwrap();
+                });
+                Self::deposit_event(RawEvent::CollateralAdded(borrow_id));
+                Ok(())
+            }
+            P2PBorrowStatus::Taken => {
+                // after been taken, the collateral asset has been transfered into the money pool
+                // so this addition should also go to the pool directly
+                ensure!(
+                    <generic_asset::Module<T>>::free_balance(&borrow.collateral_asset_id, &who) >= amount,
+                    Error::<T>::NotEnoughBalance
+                );
+                <generic_asset::Module<T>>::make_transfer_with_event(
+                    &borrow.collateral_asset_id,
+                    &who,
+                    &<MoneyPool<T>>::get(),
+                    amount,
+                )?;
+                <Borrows<T>>::mutate(&borrow_id, |v| {
+                    v.collateral_balance = v.collateral_balance.checked_add(&amount).unwrap();
+                });
+                <Loans<T>>::mutate(borrow.loan_id.unwrap(), |v| {
+                    v.collateral_balance = v.collateral_balance.checked_add(&amount).unwrap();
+                });
+                Self::deposit_event(RawEvent::CollateralAdded(borrow_id));
+                Ok(())
+            }
+            _ => {
+                Err(Error::<T>::AddCollateralNotAllowed.into())
+            }
         }
-
-        Self::deposit_event(RawEvent::CollateralAdded(borrow_id));
-
-        Ok(())
     }
 
     pub fn repay_loan(who: T::AccountId, borrow_id: P2PBorrowId) -> DispatchResult {
