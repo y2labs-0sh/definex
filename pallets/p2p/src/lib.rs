@@ -29,9 +29,15 @@ use codec::{Decode, Encode, Error as codecErr, HasCompact, Input, Output};
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
 #[allow(unused_imports)]
-use sp_runtime::traits::{
-    AtLeast32Bit, Bounded, CheckedAdd, CheckedMul, CheckedSub, MaybeDisplay,
-    MaybeSerializeDeserialize, Member, One, Saturating, SignedExtension, Zero,
+use sp_runtime::{
+    traits::{
+        AtLeast32Bit, Bounded, CheckedAdd, CheckedMul, CheckedSub, MaybeDisplay,
+        MaybeSerializeDeserialize, Member, One, Saturating, SignedExtension, Zero,
+    },
+    transaction_validity::{
+        InvalidTransaction, TransactionPriority, TransactionValidity, TransactionValidityError,
+        ValidTransaction,
+    },
 };
 use sp_std::prelude::*;
 #[allow(unused_imports)]
@@ -45,14 +51,14 @@ use sp_std::{
 #[allow(unused_imports)]
 use support::{
     debug, decl_error, decl_event, decl_module, decl_storage,
-    dispatch::{DispatchError, DispatchResult, Parameter},
+    dispatch::{DispatchError, DispatchResult, Dispatchable, Parameter},
     ensure,
     traits::{
         Contains, Currency, Get, Imbalance, LockIdentifier, LockableCurrency, ReservableCurrency,
         WithdrawReason, WithdrawReasons,
     },
-    weights::SimpleDispatchInfo,
-    IterableStorageMap,
+    weights::{DispatchInfo, SimpleDispatchInfo},
+    IsSubType, IterableStorageMap,
 };
 #[allow(unused_imports)]
 use system::{ensure_root, ensure_signed};
@@ -73,7 +79,9 @@ pub trait Trait:
 {
     /// The overarching event type.
     type Event: From<Event<Self>> + Into<<Self as system::Trait>::Event>;
-
+    type Call: Parameter
+        + Dispatchable<Origin = <Self as system::Trait>::Origin>
+        + IsSubType<Module<Self>, Self>;
     type Days: Get<Self::BlockNumber>;
 }
 
@@ -451,7 +459,13 @@ impl<T: Trait> Module<T> {
             P2PBorrowStatus::Alive => {
                 // alive borrows will just reserve user's collateral asset
                 // so we just move the addition into the reserved and update the lock
-                <generic_asset::Module<T>>::increase_reserved_balance(&borrow.collateral_asset_id, borrow.lock_id, &who, amount).or(Err(Error::<T>::FailToReserve))?;
+                <generic_asset::Module<T>>::increase_reserved_balance(
+                    &borrow.collateral_asset_id,
+                    borrow.lock_id,
+                    &who,
+                    amount,
+                )
+                .or(Err(Error::<T>::FailToReserve))?;
                 <Borrows<T>>::mutate(&borrow_id, |v| {
                     v.collateral_balance = v.collateral_balance.checked_add(&amount).unwrap();
                 });
@@ -462,7 +476,8 @@ impl<T: Trait> Module<T> {
                 // after been taken, the collateral asset has been transfered into the money pool
                 // so this addition should also go to the pool directly
                 ensure!(
-                    <generic_asset::Module<T>>::free_balance(&borrow.collateral_asset_id, &who) >= amount,
+                    <generic_asset::Module<T>>::free_balance(&borrow.collateral_asset_id, &who)
+                        >= amount,
                     Error::<T>::NotEnoughBalance
                 );
                 <generic_asset::Module<T>>::make_transfer_with_event(
@@ -480,9 +495,7 @@ impl<T: Trait> Module<T> {
                 Self::deposit_event(RawEvent::CollateralAdded(borrow_id));
                 Ok(())
             }
-            _ => {
-                Err(Error::<T>::AddCollateralNotAllowed.into())
-            }
+            _ => Err(Error::<T>::AddCollateralNotAllowed.into()),
         }
     }
 
@@ -1147,5 +1160,100 @@ impl<T: Trait> Module<T> {
         } else {
             return Some(price);
         }
+    }
+}
+
+#[derive(Encode, Decode, Clone, Eq, PartialEq)]
+pub struct P2PTxChecker<T: Trait + Send + Sync>(PhantomData<T>);
+
+impl<T: Trait + Sync + Send> Default for P2PTxChecker<T> {
+    fn default() -> Self {
+        Self(PhantomData)
+    }
+}
+
+impl<T: Trait + Send + Sync> sp_std::fmt::Debug for P2PTxChecker<T> {
+    #[cfg(feature = "std")]
+    fn fmt(&self, f: &mut sp_std::fmt::Formatter) -> sp_std::fmt::Result {
+        write!(f, "P2PTxChecker")
+    }
+    #[cfg(not(feature = "std"))]
+    fn fmt(&self, _: &mut sp_std::fmt::Formatter) -> sp_std::fmt::Result {
+        Ok(())
+    }
+}
+
+impl<T: Trait + Send + Sync> SignedExtension for P2PTxChecker<T> {
+    const IDENTIFIER: &'static str = "CheckP2PTxs";
+    type AccountId = T::AccountId;
+    type Call = <T as Trait>::Call;
+    type AdditionalSigned = ();
+    type DispatchInfo = DispatchInfo;
+    type Pre = ();
+
+    fn additional_signed(&self) -> sp_std::result::Result<(), TransactionValidityError> {
+        Ok(())
+    }
+
+    fn validate(
+        &self,
+        who: &Self::AccountId,
+        call: &Self::Call,
+        _: Self::DispatchInfo,
+        _: usize,
+    ) -> TransactionValidity {
+        let call = match call.is_sub_type() {
+            Some(call) => call,
+            None => return Ok(ValidTransaction::default()),
+        };
+
+        match call {
+            Call::make(collateral_balance, trading_pair, borrow_options) => {
+                if <generic_asset::Module<T>>::free_balance(&trading_pair.collateral, &who)
+                    < *collateral_balance
+                {
+                    return InvalidTransaction::from(Error::<T>::NotEnoughBalance).into();
+                }
+                if !<Module<T>>::is_trading_pair_allowed(&trading_pair) {
+                    return InvalidTransaction::from(Error::<T>::TradingPairNotAllowed).into();
+                }
+                if borrow_options.terms < <Module<T>>::min_borrow_terms() {
+                    return InvalidTransaction::from(Error::<T>::MinBorrowTerms).into();
+                }
+                if borrow_options.interest_rate < <Module<T>>::min_borrow_interest_rate() {
+                    return InvalidTransaction::from(Error::<T>::MinBorrowInterestRate).into();
+                }
+
+                let trading_pair_prices = <Module<T>>::fetch_trading_pair_prices(
+                    trading_pair.borrow,
+                    trading_pair.collateral,
+                );
+                match trading_pair_prices {
+                    None => {
+                        return InvalidTransaction::from(Error::<T>::TradingPairPriceMissing)
+                            .into();
+                    }
+                    Some(tps) => {
+                        if !<Module<T>>::ltv_meet_safty(
+                            &tps,
+                            borrow_options.amount,
+                            *collateral_balance,
+                        ) {
+                            return InvalidTransaction::from(Error::<T>::InitialCollateralRateFail)
+                                .into();
+                        }
+                    }
+                }
+
+                Ok(ValidTransaction::default())
+            }
+            _ => Ok(ValidTransaction::default()),
+        }
+    }
+}
+
+impl<T: Trait> From<Error<T>> for InvalidTransaction {
+    fn from(e: Error<T>) -> Self {
+        InvalidTransaction::Custom(e.as_u8())
     }
 }

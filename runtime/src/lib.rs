@@ -580,6 +580,7 @@ impl frame_system::offchain::CreateTransaction<Runtime, UncheckedExtrinsic> for 
             frame_system::CheckWeight::<Runtime>::new(),
             pallet_transaction_payment::ChargeTransactionPayment::<Runtime>::from(tip),
             Default::default(),
+            Default::default(),
         );
         let raw_payload = SignedPayload::new(call, extra)
             .map_err(|e| {
@@ -664,6 +665,7 @@ parameter_types! {
 impl p2p::Trait for Runtime {
     type Event = Event;
     type Days = DaysInBlockNumber;
+    type Call = Call;
 }
 
 impl deposit_loan::Trait for Runtime {
@@ -747,6 +749,7 @@ pub type SignedExtra = (
     frame_system::CheckWeight<Runtime>,
     pallet_transaction_payment::ChargeTransactionPayment<Runtime>,
     pallet_contracts::CheckBlockGasLimit<Runtime>,
+    p2p::P2PTxChecker<Runtime>,
 );
 /// Unchecked extrinsic type as expected by this runtime.
 pub type UncheckedExtrinsic = generic::UncheckedExtrinsic<Address, Call, Signature, SignedExtra>;
