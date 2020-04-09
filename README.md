@@ -105,7 +105,7 @@ This is just for frontend developer
         "_enum": ["JustCollateral", "SellCollateral"]
     },
     "P2PBorrowStatus": {
-        "_enum": ["Alive", "Taken", "Completed", "Dead", "Liquidated"]
+        "_enum": ["Alive", "Taken", "Canceled", "Completed", "Dead", "Liquidated"]
     },
     "TradingPair": {
         "collateral": "u32",
