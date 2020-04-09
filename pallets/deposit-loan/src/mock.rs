@@ -256,8 +256,7 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
         liquidation_account: get_from_seed::<sr25519::Public>("liquidation_account"),
         pawn_shop: get_from_seed::<sr25519::Public>("pawn_shop"),
         profit_pool: get_from_seed::<sr25519::Public>("profit_pool"),
-        market_dtoken: 0,
-        total_dtoken: 0,
+        value_of_tokens: 1_0000_0000,
         saving_interest_rate: 0,
     }
     .assimilate_storage(&mut t)
