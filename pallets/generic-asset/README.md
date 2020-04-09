@@ -21,3 +21,15 @@ api.rpc.genericAsset.userAssets()
     }
   },
 ```
+
+## types
+
+``` json
+{
+  "UserAssets": {
+    "asset_id": "AssetId",
+    "symbol": "String",
+    "balance": "String"
+  }
+}
+```

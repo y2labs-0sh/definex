@@ -158,7 +158,13 @@ This is just for frontend developer
     },
     "LoanId": "u64",
     "LoanPackageId": "u64",
-    "PhaseId": "u32"
+    "PhaseId": "u32",
+    "UserAssets": {
+      "asset_id": "AssetId",
+      "symbol": "String",
+      "balance": "String"
+    }
+  }
 }
 ```
 
