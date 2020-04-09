@@ -48,6 +48,27 @@ fn deserialize_from_string<'de, D: Deserializer<'de>, T: std::str::FromStr>(
         .map_err(|_| serde::de::Error::custom("Parse from string failed"))
 }
 
+#[cfg(feature = "std")]
+fn serialize_option_as_string<S: Serializer, T: std::fmt::Display>(
+    t: &Option<T>,
+    serializer: S,
+) -> Result<S::Ok, S::Error> {
+    match t {
+        Some(tv) => serializer.serialize_str(&tv.to_string()),
+        None => serializer.serialize_none(),
+    }
+}
+
+#[cfg(feature = "std")]
+fn deserialize_option_from_string<'de, D: Deserializer<'de>, T: std::str::FromStr>(
+    deserializer: D,
+) -> Result<Option<T>, D::Error> {
+    let s = String::deserialize(deserializer)?;
+    s.parse::<T>()
+        .map(|v| Some(v))
+        .map_err(|_| serde::de::Error::custom("Parse from string failed"))
+}
+
 pub type P2PLoanId = u128;
 pub type P2PBorrowId = u128;
 
@@ -144,27 +165,11 @@ pub struct P2PLoan<AssetId, Balance, BlockNumber, AccountId> {
 #[derive(Debug, Encode, Decode, Clone, Default, PartialEq, Eq)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub struct P2PBorrow<AssetId, Balance, BlockNumber, AccountId> {
-    #[cfg_attr(
-        feature = "std",
-        serde(bound(serialize = "Balance: std::fmt::Display"))
-    )]
     #[cfg_attr(feature = "std", serde(serialize_with = "serialize_as_string"))]
-    #[cfg_attr(
-        feature = "std",
-        serde(bound(deserialize = "Balance: std::str::FromStr"))
-    )]
     #[cfg_attr(feature = "std", serde(deserialize_with = "deserialize_from_string"))]
     pub id: P2PBorrowId,
 
-    #[cfg_attr(
-        feature = "std",
-        serde(bound(serialize = "Balance: std::fmt::Display"))
-    )]
     #[cfg_attr(feature = "std", serde(serialize_with = "serialize_as_string"))]
-    #[cfg_attr(
-        feature = "std",
-        serde(bound(deserialize = "Balance: std::str::FromStr"))
-    )]
     #[cfg_attr(feature = "std", serde(deserialize_with = "deserialize_from_string"))]
     pub lock_id: u128,
 
@@ -200,6 +205,12 @@ pub struct P2PBorrow<AssetId, Balance, BlockNumber, AccountId> {
     pub terms: u64, // days of our lives
     pub interest_rate: u64,
     pub dead_after: Option<BlockNumber>,
+
+    #[cfg_attr(feature = "std", serde(serialize_with = "serialize_option_as_string"))]
+    #[cfg_attr(
+        feature = "std",
+        serde(deserialize_with = "deserialize_option_from_string")
+    )]
     pub loan_id: Option<P2PLoanId>,
 }
 
