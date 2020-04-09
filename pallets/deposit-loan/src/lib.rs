@@ -215,7 +215,7 @@ decl_module! {
 
         fn on_initialize(height: T::BlockNumber) -> Weight {
             if !Self::paused() {
-                Self::on_each_block(height).unwrap();
+                Self::on_each_block(height);
             }
             SimpleDispatchInfo::default().weigh_data(())
         }
@@ -1044,7 +1044,7 @@ impl<T: Trait> Module<T> {
         ));
     }
 
-    fn on_each_block(_height: T::BlockNumber) -> DispatchResult{
+    fn on_each_block(_height: T::BlockNumber) {
         let collateral_asset_id = Self::collateral_asset_id();
         let liquidation_thd = Self::global_liquidation_threshold();
         let warning_thd = Self::global_warning_threshold();
@@ -1053,7 +1053,13 @@ impl<T: Trait> Module<T> {
         let price_pair = Self::fetch_trading_pair_prices(
             collection_asset_id,
             collateral_asset_id,
-        ).ok_or(Error::<T>::TradingPairPriceMissing)?;
+        );
+
+        if price_pair.is_none() {
+            return
+        }
+
+        let price_pair = price_pair.unwrap();
 
         let all_loans = <LoanIdWithAllLoans>::get();
 
@@ -1085,7 +1091,6 @@ impl<T: Trait> Module<T> {
             }
         }
         Self::calculate_loan_interest_rate();
-        Ok(())
     }
 
     fn calculate_loan_interest_rate() {
