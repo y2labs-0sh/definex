@@ -22,27 +22,46 @@
 
 //! **deposit-loan** is an implementation of Financial market protocol that
 //! provides both liquid money markets for cross-chain assets and capital markets
-//! for longer-term cryptocurrency  loans. 
-//! 
+//! for longer-term cryptocurrency  loans.
+//!
 //! ## How it works
-//! 
+//!
 //! + It will automatically adjust the interest rates based on the amount saved and the amount borrowed.
-//! 
+//!
 //! + We are working on a three-level interest rate based on cash utilization rate that is
 //! partially influenced by the economic pricing for scarce resources and our belief that the
 //! demand for stable coin is relatively inelastic in different utilization rate intervals.
-//! The exact loan interest rate is yet to be determined but it would look like this : 
-//! 
+//! The exact loan interest rate is yet to be determined but it would look like this :
+//!
 //!   `f(x) = 0.1x + 0.05 （0≤x＜0.4）|| 0.2x + 0.01 (0.4≤x<0.8) || 0.3x^6 + 0.1x^3 + 0.06 (0.8≤x≤1)`
-//!   
+//!
 //!    In which, Utilization rate X = Total borrows / (Total deposits + Total Borrows)
-//!   
+//!
 //! + Each time when a block is issued, the interest generated in that interval will be calculated
 //! based on the last time interest was calculated versus the current time interval versus realtime
 //! interest,  and the interest is transferred to collection_account. At the same time, based on the
 //! price of the collateralized asset, it is calculated whether any loan has reached the liquidation
 //! threshold and those loans will be marked as liquidation status.
-//! 
+//!
+//! Here is a simple way to calculate Compound interest within every block without calculate each account.
+//! The initial value of token is set as 1. When a user depoist some money, he will get some dtoken:
+//!    dtoken_user_will_get = deposit_amount / value_of_token
+//!    total_deposit += deposit_amount
+//! When interest is deposited, the value of token will be calculated as:
+//!    value_of_token = value_of_token * interest_amount / total_deposit
+//!    total_deposit += interest_amount
+//!
+//! Simply example will be show here:
+//!     At the begining User_A deposit 100 usdt, the price of token is 1; so User_A will get 100 dtoken.
+//!     After some time, 3 usdt interest generated, so the price of token will be: (100 + 3)/100 = 1.03.
+//!     That is, if User_A want to redeem all money, he will get: `100 dtoken * 1.03 value_of_dtoken = 103 usdt`
+//!     Then, User_B deposit 50 usdt, he will get `50 usdt / 1.03 value_of_dtoken` dtoken;
+//!     After some time, 10 usdt interest generated, the value of token will be: `1.03 * (1 + 10 / 153)`
+//!     If User_A want to redeem all now, he will get: `100 dtoken * 1.03 * (1 + 10 / 153)` usdt
+//!     User_B will get: `50 usdt / 1.03 * 1.03 * (1 + 10 / 153)` usdt
+//!     As for the 10 usdt interest:
+//!     `User_A get:User_B get == 103:50 == (100 * 1.03 * (1 + 10 / 153) - 103):(50 / 1.03 * 1.03 * (1 + 10 / 153) - 50)`
+//!
 
 #![cfg_attr(not(feature = "std"), no_std)]
 
@@ -109,11 +128,8 @@ decl_storage! {
         // pub UserDtoken get(user_dtoken) : linked_map hasher(blake2_256) T::AccountId => T::Balance;
         pub UserDtoken get(user_dtoken) : map hasher(opaque_blake2_256) T::AccountId => T::Balance;
 
-        // Total market dtoken generated
-        pub MarketDtoken get(market_dtoken) config(): T::Balance;
-
-        // Total dtoken amount
-        pub TotalDtoken get(total_dtoken) config(): T::Balance;
+        // used to calculate interest rate, default accuracy 1_0000_0000
+        pub ValueOfTokens get(value_of_tokens) config(): T::Balance;
 
         /// time of last distribution of interest
         BonusTime get(bonus_time) : T::Moment;
@@ -199,8 +215,7 @@ decl_module! {
 
         fn on_initialize(height: T::BlockNumber) -> Weight {
             if !Self::paused() {
-                Self::on_each_block(height);
-                Self::calculate_loan_interest_rate();
+                Self::on_each_block(height).unwrap();
             }
             SimpleDispatchInfo::default().weigh_data(())
         }
@@ -440,13 +455,12 @@ impl<T: Trait> Module<T> {
     pub fn create_staking(
         who: T::AccountId,
         asset_id: T::AssetId,
-        balance: T::Balance,
+        amount: T::Balance,
     ) -> DispatchResult {
-        ensure!(!balance.is_zero(), "saving can't be zero");
+        ensure!(!amount.is_zero(), "saving can't be zero");
 
-        let market_dtoken_amount = Self::market_dtoken();
-        let total_dtoken_amount = Self::total_dtoken();
         let collection_account_id = Self::collection_account_id();
+        let value_of_tokens = Self::value_of_tokens();
 
         let mut user_dtoken = T::Balance::from(0);
 
@@ -454,18 +468,14 @@ impl<T: Trait> Module<T> {
             &asset_id,
             &who,
             &collection_account_id,
-            balance,
+            amount,
         )?;
 
-        let ltv_prec_in_balance = T::Balance::from(LTV_PREC);
-        if total_dtoken_amount.is_zero() {
-            user_dtoken = balance;
-        } else {
-            user_dtoken = balance
-                .checked_mul(&market_dtoken_amount)
-                .expect("overflow!")
-                / total_dtoken_amount;
-        }
+        user_dtoken = <T::Balance as TryFrom<u128>>::try_from(10_u128.pow(8))
+            .ok()
+            .unwrap()
+            * amount
+            / value_of_tokens;
 
         // in case This user is the second deposit of the user
         if <UserDtoken<T>>::contains_key(who.clone()) {
@@ -476,12 +486,6 @@ impl<T: Trait> Module<T> {
             <UserDtoken<T>>::insert(&who, user_dtoken);
         }
 
-        let market_dtoken = market_dtoken_amount.checked_add(&user_dtoken).unwrap();
-        let total_dtoken = market_dtoken_amount.checked_add(&balance).unwrap();
-
-        <MarketDtoken<T>>::put(market_dtoken);
-        <TotalDtoken<T>>::put(total_dtoken);
-
         Ok(())
     }
 
@@ -491,59 +495,36 @@ impl<T: Trait> Module<T> {
         collection_account_id: &T::AccountId,
         amount: T::Balance,
     ) -> DispatchResult {
-        let market_dtoken_amount = Self::market_dtoken();
-        let total_dtoken_amount = Self::total_dtoken();
 
         let user_dtoken_amount = Self::user_dtoken(&who);
-        let user_will_get = user_dtoken_amount / (market_dtoken_amount / total_dtoken_amount);
+        let value_of_tokens = Self::value_of_tokens();
+
+        // let user_will_get = user_dtoken_amount / (market_dtoken_amount / total_dtoken_amount);
+        let user_will_get = user_dtoken_amount
+            * value_of_tokens
+            / <T::Balance as TryFrom<u128>>::try_from(10_u128.pow(8))
+                .ok()
+                .unwrap();
 
         ensure!(user_will_get >= amount, Error::<T>::NotEnoughBalance);
 
-        // TODO: Can be done in one step
-        Self::make_redeem_all(&who).unwrap_or_default();
-        Self::create_staking(who.clone(), *collection_asset_id, user_will_get - amount)
-            .unwrap_or_default();
-        Ok(())
-    }
+        // money user will get / money user have == dtoken will cut / dtoken user have
+        let dtoken_will_cut = amount * <T::Balance as TryFrom<u128>>::try_from(10_u128.pow(8))
+            .ok()
+            .unwrap()
+            / value_of_tokens;
 
-    fn make_redeem_all(who: &T::AccountId) -> DispatchResult {
-        let market_dtoken_amount = Self::market_dtoken();
-        let total_dtoken_amount = Self::total_dtoken();
-        let collection_asset_id = Self::collection_asset_id();
-        let collection_account_id = Self::collection_account_id();
-
-        let user_dtoken_amount = Self::user_dtoken(&who);
-
-        let user_will_get = user_dtoken_amount / (market_dtoken_amount / total_dtoken_amount);
-
-        ensure!(
-            <generic_asset::Module<T>>::free_balance(&collection_asset_id, &collection_account_id)
-                >= user_will_get,
-            Error::<T>::NotEnoughBalance
-        );
-
-        ensure!(
-            Self::total_dtoken() >= user_dtoken_amount,
-            Error::<T>::NotEnoughBalance
-        );
-        ensure!(
-            Self::market_dtoken() >= user_dtoken_amount,
-            Error::<T>::NotEnoughBalance
-        );
-
-        let total_dtoken = Self::total_dtoken() - user_will_get;
-        let market_dtoken = Self::market_dtoken() - user_dtoken_amount;
-        <UserDtoken<T>>::insert(&who, T::Balance::from(0));
-
-        <MarketDtoken<T>>::put(market_dtoken);
-        <TotalDtoken<T>>::put(total_dtoken);
+        <UserDtoken<T>>::mutate(who.clone(), |v| {
+            *v -= dtoken_will_cut;
+        });
 
         <generic_asset::Module<T>>::make_transfer_with_event(
             &collection_asset_id,
             &collection_account_id,
             &who,
-            user_will_get,
+            amount,
         )?;
+
         Ok(())
     }
 
@@ -569,7 +550,7 @@ impl<T: Trait> Module<T> {
         ).ok_or(Error::<T>::TradingPairPriceMissing)?;
 
         // collateral asset will be transfered to this shop
-        let shop = <PawnShop<T>>::get();    
+        let shop = <PawnShop<T>>::get();
         let loan_cap = <LoanCap<T>>::get();
         let total_loan = <TotalLoan<T>>::get();
 
@@ -1103,6 +1084,7 @@ impl<T: Trait> Module<T> {
                 }
             }
         }
+        Self::calculate_loan_interest_rate();
         Ok(())
     }
 
@@ -1115,14 +1097,19 @@ impl<T: Trait> Module<T> {
             <generic_asset::Module<T>>::free_balance(&collection_asset_id, &collection_account_id)
                 + Self::total_loan();
 
+        let last_bonus_time: T::Moment = Self::bonus_time();
         let current_time = <timestamp::Module<T>>::get();
         <BonusTime<T>>::put(current_time);
-        let last_bonus_time: T::Moment = Self::bonus_time();
 
-        if !(total_deposit + total_loan).is_zero() {
+        // if !(total_deposit + total_loan).is_zero() {
+        if total_deposit > T::Balance::from(0) && total_loan > T::Balance::from(0) {
 
             let current_loan_interest_rate = Self::current_loan_interest_rate();
             let time_duration = TryInto::<u32>::try_into(current_time - last_bonus_time).ok().unwrap();
+
+            // after 1500s, ValueOfTokens will change.
+            // TODO: uncomment next line while doing testcase
+            // let time_duration = TryInto::<u32>::try_into(1500).ok().unwrap();
 
             let interest_generated = T::Balance::from(time_duration)
                 * total_loan
@@ -1147,11 +1134,14 @@ impl<T: Trait> Module<T> {
                     amount,
                 )
                 .unwrap_or_default();
-
-                <TotalDtoken<T>>::mutate(|v| {
-                    *v = v.checked_add(&amount).expect("Overflow of market dtoken");
-                });
             }
+
+            let value_of_tokens = Self::value_of_tokens();
+
+            <ValueOfTokens<T>>::put(
+                value_of_tokens
+                * (total_deposit + interest_generated) / total_deposit
+            );
 
             <LoanInterestRateCurrent<T>>::put(current_loan_interest_rate);
 
@@ -1175,7 +1165,7 @@ impl<T: Trait> Module<T> {
         let mut loan_interest_rate_current = T::Balance::from(0);
 
         if !(total_deposit + total_loan).is_zero() {
-            
+
             let utilization_rate_x: T::Balance = total_loan.checked_mul(&T::Balance::from(10_u32.pow(8))).expect("saving share overflow")
                 / (total_deposit + total_loan);
 
@@ -1185,7 +1175,7 @@ impl<T: Trait> Module<T> {
             } else if utilization_rate_x >= T::Balance::from(8000_0000) {
                 let utilization_rate_x_pow3 = utilization_rate_x * utilization_rate_x * utilization_rate_x;
                 let utilization_rate_x_pow6 = utilization_rate_x_pow3 * utilization_rate_x_pow3;
-                (utilization_rate_x_pow6 * 30.into() +  utilization_rate_x_pow3 * T::Balance::from(10_u32.pow(25)) + T::Balance::from(6) * <T::Balance as TryFrom<u128>>::try_from(10_u128.pow(48)).ok().unwrap()) 
+                (utilization_rate_x_pow6 * 30.into() +  utilization_rate_x_pow3 * T::Balance::from(10_u32.pow(25)) + T::Balance::from(6) * <T::Balance as TryFrom<u128>>::try_from(10_u128.pow(48)).ok().unwrap())
                 / <T::Balance as TryFrom<u128>>::try_from(10_u128.pow(42)).ok().unwrap()
             } else {
                 (T::Balance::from(20) * utilization_rate_x + T::Balance::from(1_0000_0000)) / T::Balance::from(100)
