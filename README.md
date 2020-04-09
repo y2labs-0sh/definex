@@ -164,7 +164,6 @@ This is just for frontend developer
       "symbol": "String",
       "balance": "String"
     }
-  }
 }
 ```
 
