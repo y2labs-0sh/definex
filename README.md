@@ -163,6 +163,21 @@ This is just for frontend developer
       "asset_id": "AssetId",
       "symbol": "String",
       "balance": "String"
+    },
+    "P2PLoanRPC": {
+      "id": "P2PLoanId",
+      "borrow_id": "P2PBorrowId",
+      "borrower_id": "AccountId",
+      "loaner_id": "AccountId",
+      "secs_left": "u64",
+      "collateral_asset_id": "AssetId",
+      "collateral_balance": "Balance",
+      "loan_balance": "Balance",
+      "loan_asset_id": "AssetId",
+      "status": "P2PLoanHealth",
+      "interest_rate": "u64",
+      "liquidation_type": "LiquidationType",
+      "can_be_liquidate": "bool"
     }
 }
 ```
@@ -245,7 +260,7 @@ our web wallet.
           "type": "Option<u64>",
         },
       ],
-      "type": "Vec<P2PLoan>",
+      "type": "Vec<P2PLoanRPC>",
     },
     "userLoans": {
       "params": [
@@ -262,7 +277,7 @@ our web wallet.
           "type": "Option<u64>",
         },
       ],
-      "type": "Vec<P2PLoan>",
+      "type": "Vec<P2PLoanRPC>",
     },
     "aliveLoans": {
       "params": [
@@ -275,7 +290,7 @@ our web wallet.
           "type": "Option<u64>",
         },
       ],
-      "type": "Vec<P2PLoan>",
+      "type": "Vec<P2PLoanRPC>",
     }
   }
 }

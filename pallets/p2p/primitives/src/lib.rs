@@ -32,7 +32,7 @@ use support::{
 };
 
 #[cfg(feature = "std")]
-fn serialize_as_string<S: Serializer, T: std::fmt::Display>(
+pub fn serialize_as_string<S: Serializer, T: std::fmt::Display>(
     t: &T,
     serializer: S,
 ) -> Result<S::Ok, S::Error> {
@@ -40,7 +40,7 @@ fn serialize_as_string<S: Serializer, T: std::fmt::Display>(
 }
 
 #[cfg(feature = "std")]
-fn deserialize_from_string<'de, D: Deserializer<'de>, T: std::str::FromStr>(
+pub fn deserialize_from_string<'de, D: Deserializer<'de>, T: std::str::FromStr>(
     deserializer: D,
 ) -> Result<T, D::Error> {
     let s = String::deserialize(deserializer)?;
@@ -49,7 +49,7 @@ fn deserialize_from_string<'de, D: Deserializer<'de>, T: std::str::FromStr>(
 }
 
 #[cfg(feature = "std")]
-fn serialize_option_as_string<S: Serializer, T: std::fmt::Display>(
+pub fn serialize_option_as_string<S: Serializer, T: std::fmt::Display>(
     t: &Option<T>,
     serializer: S,
 ) -> Result<S::Ok, S::Error> {
@@ -60,7 +60,7 @@ fn serialize_option_as_string<S: Serializer, T: std::fmt::Display>(
 }
 
 #[cfg(feature = "std")]
-fn deserialize_option_from_string<'de, D: Deserializer<'de>, T: std::str::FromStr>(
+pub fn deserialize_option_from_string<'de, D: Deserializer<'de>, T: std::str::FromStr>(
     deserializer: D,
 ) -> Result<Option<T>, D::Error> {
     let s = String::deserialize(deserializer)?;
@@ -72,7 +72,7 @@ fn deserialize_option_from_string<'de, D: Deserializer<'de>, T: std::str::FromSt
 pub type P2PLoanId = u128;
 pub type P2PBorrowId = u128;
 
-#[derive(Debug, Encode, Decode, Clone, PartialEq, Eq)]
+#[derive(Debug, Encode, Decode, Copy, Clone, PartialEq, Eq)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub enum P2PLoanHealth {
     Well,
@@ -88,7 +88,7 @@ impl Default for P2PLoanHealth {
     }
 }
 
-#[derive(Debug, Encode, Decode, Clone, PartialEq, Eq)]
+#[derive(Debug, Encode, Decode, Copy, Clone, PartialEq, Eq)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub enum LiquidationType {
     JustCollateral,

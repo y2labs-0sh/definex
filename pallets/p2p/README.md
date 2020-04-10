@@ -18,11 +18,11 @@ api.rpc.pToP.userBorrows(who: AccountId, size: Optional, offset: Optional) : []P
 
 api.rpc.pToP.aliveBorrows(size: Optional, offset: Optional) : []P2PBorrow
 
-api.rpc.pToP.loans(size: Optional, offset: Optional) : []P2PLoan
+api.rpc.pToP.loans(size: Optional, offset: Optional) : []P2PLoanRPC
 
-api.rpc.pToP.userLoans(who: AccountId, size: Optional, offset: Optional) : []P2PLoan
+api.rpc.pToP.userLoans(who: AccountId, size: Optional, offset: Optional) : []P2PLoanRPC
 
-api.rpc.pToP.aliveLoans(size: Optional, offset: Optional) : []P2PLoan
+api.rpc.pToP.aliveLoans(size: Optional, offset: Optional) : []P2PLoanRPC
 
 ```json
 {
@@ -81,7 +81,7 @@ api.rpc.pToP.aliveLoans(size: Optional, offset: Optional) : []P2PLoan
           "type": "Option<u64>",
         },
       ],
-      "type": "Vec<P2PLoan>",
+      "type": "Vec<P2PLoanRPC>",
     },
     "userLoans": {
       "params": [
@@ -98,7 +98,7 @@ api.rpc.pToP.aliveLoans(size: Optional, offset: Optional) : []P2PLoan
           "type": "Option<u64>",
         },
       ],
-      "type": "Vec<P2PLoan>",
+      "type": "Vec<P2PLoanRPC>",
     },
     "aliveLoans": {
       "params": [
@@ -111,7 +111,7 @@ api.rpc.pToP.aliveLoans(size: Optional, offset: Optional) : []P2PLoan
           "type": "Option<u64>",
         },
       ],
-      "type": "Vec<P2PLoan>",
+      "type": "Vec<P2PLoanRPC>",
     }
   }
 }
@@ -269,7 +269,22 @@ api.tx.pToP.repay(borrow_id:P2PBorrowId)
     "amount": "Balance",
     "reasons": "WithdrawReasons"
   },
-  "PriceInUSDT": "u64"
+  "PriceInUSDT": "u64",
+  "P2PLoanRPC": {
+    "id": "P2PLoanId",
+    "borrow_id": "P2PBorrowId",
+    "borrower_id": "AccountId",
+    "loaner_id": "AccountId",
+    "secs_left": "u64",
+    "collateral_asset_id": "AssetId",
+    "collateral_balance": "Balance",
+    "loan_balance": "Balance",
+    "loan_asset_id": "AssetId",
+    "status": "P2PLoanHealth",
+    "interest_rate": "u64",
+    "liquidation_type": "LiquidationType",
+    "can_be_liquidate": "bool"
+  }
 }
 ```
 
@@ -297,4 +312,5 @@ api.tx.pToP.repay(borrow_id:P2PBorrowId)
     Error::LoanNotWell => 18,
     Error::AddCollateralNotallowed => 19,
     Error::FailToreserve => 20,
+    Error::CanNotLiquidateYourself => 21,
 ```

@@ -31,7 +31,7 @@
 
 use std::{fmt, sync::Arc};
 
-use node_primitives::{AccountId, AssetId, Balance, Block, BlockNumber, Index};
+use node_primitives::{AccountId, AssetId, Balance, Block, BlockNumber, Index, Moment};
 use node_runtime::UncheckedExtrinsic;
 use sc_consensus_babe::{Config, Epoch};
 use sc_consensus_babe_rpc::BabeRPCHandler;
@@ -91,7 +91,7 @@ where
         UncheckedExtrinsic,
     >,
     C::Api: generic_asset_rpc::GenericAssetRuntimeApi<Block, AssetId, Balance, AccountId>,
-    C::Api: p2p_rpc::P2PRuntimeApi<Block, AssetId, Balance, BlockNumber, AccountId>,
+    C::Api: p2p_rpc::P2PRuntimeApi<Block, AssetId, Balance, BlockNumber, AccountId, Moment>,
     C::Api: deposit_loan_rpc::DepositLoanRuntimeApi<Block, AccountId, Balance>,
     C::Api: BabeApi<Block>,
     <C::Api as sp_api::ApiErrorExt>::Error: fmt::Debug,
