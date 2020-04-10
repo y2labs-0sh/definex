@@ -1,7 +1,6 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
-use codec::{Codec, Decode, Encode};
-use sp_runtime::traits::{MaybeDisplay, MaybeFromStr};
+use codec::Codec;
 use sp_std::vec::Vec;
 
 use deposit_loan_primitives::*;
