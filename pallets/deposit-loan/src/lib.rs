@@ -89,9 +89,11 @@ use sp_runtime::{DispatchError, DispatchResult, RuntimeDebug};
 
 #[allow(unused_imports)]
 use support::{
-    decl_error, decl_event, decl_module, decl_storage, dispatch::Parameter, ensure,
-    weights::{SimpleDispatchInfo, Weight, WeighData},
-    IterableStorageMap
+    decl_error, decl_event, decl_module, decl_storage,
+    dispatch::Parameter,
+    ensure,
+    weights::{SimpleDispatchInfo, WeighData, Weight},
+    IterableStorageMap,
 };
 
 #[allow(unused_imports)]
@@ -426,6 +428,8 @@ decl_module! {
         pub fn draw(origin, loan_id: LoanId, amount: T::Balance) -> DispatchResult {
             ensure!(!Self::paused(), Error::<T>::Paused);
             let who = ensure_signed(origin)?;
+            let loan = Self::get_loan_by_id(loan_id);
+            ensure!(loan.who == who, Error::<T>::NotLoanOwner);
             Self::draw_from_loan(who, loan_id, amount)
         }
     }
@@ -495,13 +499,11 @@ impl<T: Trait> Module<T> {
         collection_account_id: &T::AccountId,
         amount: T::Balance,
     ) -> DispatchResult {
-
         let user_dtoken_amount = Self::user_dtoken(&who);
         let value_of_tokens = Self::value_of_tokens();
 
         // let user_will_get = user_dtoken_amount / (market_dtoken_amount / total_dtoken_amount);
-        let user_will_get = user_dtoken_amount
-            * value_of_tokens
+        let user_will_get = user_dtoken_amount * value_of_tokens
             / <T::Balance as TryFrom<u128>>::try_from(10_u128.pow(8))
                 .ok()
                 .unwrap();
@@ -509,9 +511,10 @@ impl<T: Trait> Module<T> {
         ensure!(user_will_get >= amount, Error::<T>::NotEnoughBalance);
 
         // money user will get / money user have == dtoken will cut / dtoken user have
-        let dtoken_will_cut = amount * <T::Balance as TryFrom<u128>>::try_from(10_u128.pow(8))
-            .ok()
-            .unwrap()
+        let dtoken_will_cut = amount
+            * <T::Balance as TryFrom<u128>>::try_from(10_u128.pow(8))
+                .ok()
+                .unwrap()
             / value_of_tokens;
 
         <UserDtoken<T>>::mutate(who.clone(), |v| {
@@ -533,7 +536,6 @@ impl<T: Trait> Module<T> {
         collateral_amount: T::Balance,
         loan_amount: T::Balance,
     ) -> DispatchResult {
-
         let collection_asset_id = Self::collection_asset_id();
         let collateral_asset_id = Self::collateral_asset_id();
         let collection_account_id = Self::collection_account_id();
@@ -544,10 +546,8 @@ impl<T: Trait> Module<T> {
             Error::<T>::NotEnoughBalance
         );
 
-        let price_pair = Self::fetch_trading_pair_prices(
-            collection_asset_id,
-            collateral_asset_id,
-        ).ok_or(Error::<T>::TradingPairPriceMissing)?;
+        let price_pair = Self::fetch_trading_pair_prices(collection_asset_id, collateral_asset_id)
+            .ok_or(Error::<T>::TradingPairPriceMissing)?;
 
         // collateral asset will be transfered to this shop
         let shop = <PawnShop<T>>::get();
@@ -558,7 +558,12 @@ impl<T: Trait> Module<T> {
             return Err(Error::<T>::ReachLoanCap)?;
         }
 
-        match Self::get_collateral_loan(collateral_amount, collateral_asset_id, loan_amount, collection_asset_id) {
+        match Self::get_collateral_loan(
+            collateral_amount,
+            collateral_asset_id,
+            loan_amount,
+            collection_asset_id,
+        ) {
             Err(err) => Err(err),
             Ok(CollateralLoan {
                 collateral_amount: actual_collateral_amount,
@@ -571,13 +576,18 @@ impl<T: Trait> Module<T> {
 
                 let loan_id = Self::get_next_loan_id();
 
-                let price_pair_borrow_asset_price = <T::Balance as TryFrom<u128>>::try_from(price_pair.borrow_asset_price as u128)
-                    .ok()
-                    .unwrap();
+                let price_pair_borrow_asset_price =
+                    <T::Balance as TryFrom<u128>>::try_from(price_pair.borrow_asset_price as u128)
+                        .ok()
+                        .unwrap();
 
                 let collateral_balance_available = actual_collateral_amount
                     - loan_amount * price_pair_borrow_asset_price
-                        / <T::Balance as TryFrom<u128>>::try_from(price_pair.collateral_asset_price as u128).ok().unwrap();
+                        / <T::Balance as TryFrom<u128>>::try_from(
+                            price_pair.collateral_asset_price as u128,
+                        )
+                        .ok()
+                        .unwrap();
 
                 // transfer collateral to pawnshop
                 <generic_asset::Module<T>>::make_transfer_with_event(
@@ -626,16 +636,12 @@ impl<T: Trait> Module<T> {
         loan_amount: T::Balance,
         loan_asset_id: T::AssetId,
     ) -> Result<CollateralLoan<T::Balance>, DispatchError> {
-
         if collateral_amount.is_zero() && loan_amount.is_zero() {
             return Err(Error::<T>::InvalidCollateralLoanAmounts)?;
         }
 
-        let price_pair = Self::fetch_trading_pair_prices(
-            loan_asset_id,
-            collateral_asset_id,
-        ).ok_or(Error::<T>::TradingPairPriceMissing)?;
-
+        let price_pair = Self::fetch_trading_pair_prices(loan_asset_id, collateral_asset_id)
+            .ok_or(Error::<T>::TradingPairPriceMissing)?;
 
         let price_prec_in_balance = T::Balance::from(PRICE_PREC);
         let ltv_prec_in_balance = T::Balance::from(LTV_PREC);
@@ -643,15 +649,20 @@ impl<T: Trait> Module<T> {
         let ltv = GlobalLTVLimit::get();
         let ltv_in_balance = <T::Balance as TryFrom<u64>>::try_from(ltv).ok().unwrap();
 
-        let price_pair_collateral_asset_price = <T::Balance as TryFrom<u128>>::try_from(price_pair.collateral_asset_price as u128)
-            .ok()
-            .unwrap();
-        let price_pair_borrow_asset_price = <T::Balance as TryFrom<u128>>::try_from(price_pair.borrow_asset_price as u128)
-        .ok()
-        .unwrap();
+        let price_pair_collateral_asset_price =
+            <T::Balance as TryFrom<u128>>::try_from(price_pair.collateral_asset_price as u128)
+                .ok()
+                .unwrap();
+        let price_pair_borrow_asset_price =
+            <T::Balance as TryFrom<u128>>::try_from(price_pair.borrow_asset_price as u128)
+                .ok()
+                .unwrap();
 
         if collateral_amount.is_zero() {
-            let must_collateral_amount = loan_amount * ltv_prec_in_balance * price_prec_in_balance * price_pair_borrow_asset_price
+            let must_collateral_amount = loan_amount
+                * ltv_prec_in_balance
+                * price_prec_in_balance
+                * price_pair_borrow_asset_price
                 / (price_pair_collateral_asset_price * ltv_in_balance);
 
             return Ok(CollateralLoan {
@@ -661,15 +672,17 @@ impl<T: Trait> Module<T> {
         }
 
         if loan_amount.is_zero() {
-            let can_loan_amount = (collateral_amount * price_pair_collateral_asset_price * ltv_in_balance)
-                / (ltv_prec_in_balance * price_prec_in_balance * price_pair_borrow_asset_price);
+            let can_loan_amount =
+                (collateral_amount * price_pair_collateral_asset_price * ltv_in_balance)
+                    / (ltv_prec_in_balance * price_prec_in_balance * price_pair_borrow_asset_price);
             return Ok(CollateralLoan {
                 collateral_amount: collateral_amount,
                 loan_amount: can_loan_amount,
             });
         }
 
-        if (loan_amount * ltv_prec_in_balance * price_pair_borrow_asset_price) * price_prec_in_balance
+        if (loan_amount * ltv_prec_in_balance * price_pair_borrow_asset_price)
+            * price_prec_in_balance
             / (collateral_amount * price_pair_collateral_asset_price)
             >= ltv_in_balance
         {
@@ -791,7 +804,6 @@ impl<T: Trait> Module<T> {
         liquidation_account: T::AccountId,
         auction_balance: T::Balance,
     ) -> DispatchResult {
-
         let pawnshop = Self::pawn_shop();
         let collateral_asset_id = Self::collateral_asset_id();
         let collection_account_id = Self::collection_account_id();
@@ -809,7 +821,8 @@ impl<T: Trait> Module<T> {
         );
 
         ensure!(
-            auction_balance >= loan.loan_balance_total, Error::<T>::NotEnoughBalance
+            auction_balance >= loan.loan_balance_total,
+            Error::<T>::NotEnoughBalance
         );
 
         <generic_asset::Module<T>>::make_transfer_with_event(
@@ -823,13 +836,12 @@ impl<T: Trait> Module<T> {
 
         if leftover.is_some() && leftover.unwrap() > T::Balance::zero() {
             let penalty_rate = Self::liquidation_penalty();
-            let penalty =
-                leftover.unwrap() * T::Balance::from(penalty_rate) / 100.into();
+            let penalty = leftover.unwrap() * T::Balance::from(penalty_rate) / 100.into();
 
-                <generic_asset::Module<T>>::make_transfer_with_event(
+            <generic_asset::Module<T>>::make_transfer_with_event(
                 &loan_asset_id,
                 &collection_account_id,
-                &Self::profit_pool(),   // TODO: can change to team account
+                &Self::profit_pool(), // TODO: can change to team account
                 penalty,
             )
             .or_else(|err| -> DispatchResult {
@@ -918,7 +930,7 @@ impl<T: Trait> Module<T> {
         amount: T::Balance,
     ) -> DispatchResult {
         let pawnshop = Self::pawn_shop();
-        let collateral_asset_id = Self::collection_asset_id();
+        let collateral_asset_id = Self::collateral_asset_id();
 
         ensure!(
             <generic_asset::Module<T>>::free_balance(&collateral_asset_id, &from) >= amount,
@@ -933,8 +945,10 @@ impl<T: Trait> Module<T> {
         )?;
 
         <Loans<T>>::mutate(loan.id, |l| {
-            l.collateral_balance_original += amount;
-            l.collateral_balance_available += amount;
+            l.collateral_balance_original =
+                l.collateral_balance_original.checked_add(&amount).unwrap();
+            l.collateral_balance_available =
+                l.collateral_balance_available.checked_add(&amount).unwrap();
         });
 
         <TotalCollateral<T>>::mutate(|c| {
@@ -995,18 +1009,18 @@ impl<T: Trait> Module<T> {
         let collateral_asset_id = Self::collateral_asset_id();
         let collection_asset_id = Self::collection_asset_id();
 
-        let price_pair = Self::fetch_trading_pair_prices(
-            collection_asset_id,
-            collateral_asset_id,
-        ).ok_or(Error::<T>::TradingPairPriceMissing)?;
+        let price_pair = Self::fetch_trading_pair_prices(collection_asset_id, collateral_asset_id)
+            .ok_or(Error::<T>::TradingPairPriceMissing)?;
 
-        let price_pair_borrow_asset_price = <T::Balance as TryFrom<u128>>::try_from(price_pair.borrow_asset_price as u128)
-            .ok()
-            .unwrap();
+        let price_pair_borrow_asset_price =
+            <T::Balance as TryFrom<u128>>::try_from(price_pair.borrow_asset_price as u128)
+                .ok()
+                .unwrap();
 
-        let price_pair_collateral_asset_price = <T::Balance as TryFrom<u128>>::try_from(price_pair.collateral_asset_price as u128)
-        .ok()
-        .unwrap();
+        let price_pair_collateral_asset_price =
+            <T::Balance as TryFrom<u128>>::try_from(price_pair.collateral_asset_price as u128)
+                .ok()
+                .unwrap();
 
         let global_ltv = Self::global_ltv_limit();
         let available_credit = loan.collateral_balance_available
@@ -1019,11 +1033,8 @@ impl<T: Trait> Module<T> {
 
         <Loans<T>>::mutate(loan_id, |v| {
             v.loan_balance_total = v.loan_balance_total + amount;
-        });
-
-        <Loans<T>>::mutate(loan_id, |v| {
-            v.collateral_balance_available =
-                v.collateral_balance_available - amount * price_pair_borrow_asset_price / price_pair_collateral_asset_price;
+            v.collateral_balance_available = v.collateral_balance_available
+                - amount * price_pair_borrow_asset_price / price_pair_collateral_asset_price;
         });
 
         <TotalLoan<T>>::mutate(|v| *v += amount);
@@ -1050,13 +1061,10 @@ impl<T: Trait> Module<T> {
         let warning_thd = Self::global_warning_threshold();
         let collection_asset_id = Self::collection_asset_id();
 
-        let price_pair = Self::fetch_trading_pair_prices(
-            collection_asset_id,
-            collateral_asset_id,
-        );
+        let price_pair = Self::fetch_trading_pair_prices(collection_asset_id, collateral_asset_id);
 
         if price_pair.is_none() {
-            return
+            return;
         }
 
         let price_pair = price_pair.unwrap();
@@ -1065,12 +1073,18 @@ impl<T: Trait> Module<T> {
 
         for loan_id in all_loans {
             let loan = <Loans<T>>::get(&loan_id);
-        // for (loan_id, loan) in <Loans<T>>::enumerate() {
+            // for (loan_id, loan) in <Loans<T>>::enumerate() {
             if Self::check_loan_in_liquidation(&loan_id) {
                 continue;
             }
 
-            match Self::check_loan_health(&loan, price_pair.borrow_asset_price, price_pair.collateral_asset_price, liquidation_thd, warning_thd) {
+            match Self::check_loan_health(
+                &loan,
+                price_pair.borrow_asset_price,
+                price_pair.collateral_asset_price,
+                liquidation_thd,
+                warning_thd,
+            ) {
                 LoanHealth::Well => {}
                 LoanHealth::Warning(ltv) => {
                     if loan.status != LoanHealth::Warning(ltv) {
@@ -1108,27 +1122,26 @@ impl<T: Trait> Module<T> {
 
         // if !(total_deposit + total_loan).is_zero() {
         if total_deposit > T::Balance::from(0) && total_loan > T::Balance::from(0) {
-
             let current_loan_interest_rate = Self::current_loan_interest_rate();
-            let time_duration = TryInto::<u32>::try_into(current_time - last_bonus_time).ok().unwrap();
+            let time_duration = TryInto::<u32>::try_into(current_time - last_bonus_time)
+                .ok()
+                .unwrap();
 
             // after 1500s, ValueOfTokens will change.
             // TODO: uncomment next line while doing testcase
             // let time_duration = TryInto::<u32>::try_into(1500).ok().unwrap();
 
-            let interest_generated = T::Balance::from(time_duration)
-                * total_loan
-                * current_loan_interest_rate
-                / T::Balance::from(SEC_PER_DAY)
-                / T::Balance::from(DAYS_PER_YEAR)
-                / T::Balance::from(1_0000_0000);
+            let interest_generated =
+                T::Balance::from(time_duration) * total_loan * current_loan_interest_rate
+                    / T::Balance::from(SEC_PER_DAY)
+                    / T::Balance::from(DAYS_PER_YEAR)
+                    / T::Balance::from(1_0000_0000);
 
             let all_loans = <LoanIdWithAllLoans>::get();
             for loan_id in all_loans {
                 let loan = <Loans<T>>::get(&loan_id);
 
-                let amount = interest_generated * loan.loan_balance_total
-                    / total_loan;
+                let amount = interest_generated * loan.loan_balance_total / total_loan;
 
                 Self::draw_from_loan(loan.who.clone(), loan_id, amount).unwrap_or_default();
 
@@ -1144,8 +1157,7 @@ impl<T: Trait> Module<T> {
             let value_of_tokens = Self::value_of_tokens();
 
             <ValueOfTokens<T>>::put(
-                value_of_tokens
-                * (total_deposit + interest_generated) / total_deposit
+                value_of_tokens * (total_deposit + interest_generated) / total_deposit,
             );
 
             <LoanInterestRateCurrent<T>>::put(current_loan_interest_rate);
@@ -1191,14 +1203,15 @@ impl<T: Trait> Module<T> {
 
     // Obtain current annualized saving interest rate
     fn current_saving_interest_rate() -> T::Balance {
-
         let collection_asset_id = Self::collection_asset_id();
         let collection_account_id = Self::collection_account_id();
-        let total_deposit = <generic_asset::Module<T>>::free_balance(&collection_asset_id, &collection_account_id)
-            + Self::total_loan();
+        let total_deposit =
+            <generic_asset::Module<T>>::free_balance(&collection_asset_id, &collection_account_id)
+                + Self::total_loan();
 
         // Calculate deposit interest: deposit interest rate = borrowing interest * total borrowing / total deposit
-        let current_saving_interest_rate = Self::current_loan_interest_rate() * Self::total_loan() / total_deposit;
+        let current_saving_interest_rate =
+            Self::current_loan_interest_rate() * Self::total_loan() / total_deposit;
         current_saving_interest_rate
     }
 
@@ -1242,7 +1255,6 @@ impl<T: Trait> Module<T> {
             return Some(price);
         }
     }
-
 }
 
 decl_error! {
