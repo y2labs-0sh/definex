@@ -415,7 +415,7 @@ decl_module! {
         #[weight = SimpleDispatchInfo::FixedNormal(10)]
         pub fn add_collateral(origin, loan_id: LoanId, amount: T::Balance) -> DispatchResult {
             ensure!(!Self::paused(), Error::<T>::Paused);
-            let who = ensure_signed(origin)?;
+            ensure_signed(origin)?;
             ensure!(<Loans<T>>::contains_key(loan_id), Error::<T>::UnknownLoanId);
             let loan = Self::get_loan_by_id(loan_id);
             // ensure!(who == loan.who, "adding collateral to other's loan is not allowed");
@@ -466,8 +466,6 @@ impl<T: Trait> Module<T> {
         let collection_account_id = Self::collection_account_id();
         let value_of_tokens = Self::value_of_tokens();
 
-        let mut user_dtoken = T::Balance::from(0);
-
         <generic_asset::Module<T>>::make_transfer_with_event(
             &asset_id,
             &who,
@@ -475,7 +473,7 @@ impl<T: Trait> Module<T> {
             amount,
         )?;
 
-        user_dtoken = <T::Balance as TryFrom<u128>>::try_from(10_u128.pow(8))
+        let user_dtoken = <T::Balance as TryFrom<u128>>::try_from(10_u128.pow(8))
             .ok()
             .unwrap()
             * amount
