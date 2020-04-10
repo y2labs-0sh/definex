@@ -426,6 +426,8 @@ decl_module! {
         pub fn draw(origin, loan_id: LoanId, amount: T::Balance) -> DispatchResult {
             ensure!(!Self::paused(), Error::<T>::Paused);
             let who = ensure_signed(origin)?;
+            let loan = Self::get_loan_by_id(loan_id);
+            ensure!(loan.who == who, Error::<T>::NotLoanOwner);
             Self::draw_from_loan(who, loan_id, amount)
         }
     }
@@ -918,7 +920,7 @@ impl<T: Trait> Module<T> {
         amount: T::Balance,
     ) -> DispatchResult {
         let pawnshop = Self::pawn_shop();
-        let collateral_asset_id = Self::collection_asset_id();
+        let collateral_asset_id = Self::collateral_asset_id();
 
         ensure!(
             <generic_asset::Module<T>>::free_balance(&collateral_asset_id, &from) >= amount,
@@ -933,8 +935,8 @@ impl<T: Trait> Module<T> {
         )?;
 
         <Loans<T>>::mutate(loan.id, |l| {
-            l.collateral_balance_original += amount;
-            l.collateral_balance_available += amount;
+            l.collateral_balance_original = l.collateral_balance_original.checked_add(&amount).unwrap();
+            l.collateral_balance_available = l.collateral_balance_available.checked_add(&amount).unwrap();
         });
 
         <TotalCollateral<T>>::mutate(|c| {
@@ -1005,8 +1007,8 @@ impl<T: Trait> Module<T> {
             .unwrap();
 
         let price_pair_collateral_asset_price = <T::Balance as TryFrom<u128>>::try_from(price_pair.collateral_asset_price as u128)
-        .ok()
-        .unwrap();
+            .ok()
+            .unwrap();
 
         let global_ltv = Self::global_ltv_limit();
         let available_credit = loan.collateral_balance_available
@@ -1019,9 +1021,6 @@ impl<T: Trait> Module<T> {
 
         <Loans<T>>::mutate(loan_id, |v| {
             v.loan_balance_total = v.loan_balance_total + amount;
-        });
-
-        <Loans<T>>::mutate(loan_id, |v| {
             v.collateral_balance_available =
                 v.collateral_balance_available - amount * price_pair_borrow_asset_price / price_pair_collateral_asset_price;
         });
