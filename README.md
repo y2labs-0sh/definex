@@ -260,7 +260,7 @@ our web wallet.
           "type": "Option<u64>",
         },
       ],
-      "type": "Vec<P2PLoan>",
+      "type": "Vec<P2PLoanRPC>",
     },
     "userLoans": {
       "params": [
@@ -277,7 +277,7 @@ our web wallet.
           "type": "Option<u64>",
         },
       ],
-      "type": "Vec<P2PLoan>",
+      "type": "Vec<P2PLoanRPC>",
     },
     "aliveLoans": {
       "params": [
@@ -290,7 +290,7 @@ our web wallet.
           "type": "Option<u64>",
         },
       ],
-      "type": "Vec<P2PLoan>",
+      "type": "Vec<P2PLoanRPC>",
     }
   }
 }

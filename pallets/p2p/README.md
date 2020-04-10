@@ -81,7 +81,7 @@ api.rpc.pToP.aliveLoans(size: Optional, offset: Optional) : []P2PLoanRPC
           "type": "Option<u64>",
         },
       ],
-      "type": "Vec<P2PLoan>",
+      "type": "Vec<P2PLoanRPC>",
     },
     "userLoans": {
       "params": [
@@ -98,7 +98,7 @@ api.rpc.pToP.aliveLoans(size: Optional, offset: Optional) : []P2PLoanRPC
           "type": "Option<u64>",
         },
       ],
-      "type": "Vec<P2PLoan>",
+      "type": "Vec<P2PLoanRPC>",
     },
     "aliveLoans": {
       "params": [
@@ -111,7 +111,7 @@ api.rpc.pToP.aliveLoans(size: Optional, offset: Optional) : []P2PLoanRPC
           "type": "Option<u64>",
         },
       ],
-      "type": "Vec<P2PLoan>",
+      "type": "Vec<P2PLoanRPC>",
     }
   }
 }
