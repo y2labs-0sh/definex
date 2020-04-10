@@ -26,8 +26,8 @@
 
 #[allow(unused_imports)]
 use codec::{Decode, Encode, Error as codecErr, HasCompact, Input, Output};
-// #[cfg(feature = "std")]
-// use serde::{Deserialize, Serialize};
+#[cfg(feature = "std")]
+use serde::{Deserialize, Serialize};
 #[allow(unused_imports)]
 use sp_runtime::{
     traits::{
@@ -68,7 +68,7 @@ pub use p2p_primitives::*;
 mod mock;
 mod tests;
 
-// const LOCK_ID: LockIdentifier = *b"dfxlsbrw";
+const LOCK_ID: LockIdentifier = *b"dfxlsbrw";
 
 pub const INTEREST_RATE_PRECISION: u64 = 10000_0000;
 pub const LTV_SCALE: u32 = 10000;
@@ -145,6 +145,7 @@ decl_error! {
         LoanNotWell,
         AddCollateralNotAllowed,
         FailToReserve,
+        CanNotLiquidateYourself,
     }
 }
 
@@ -854,6 +855,11 @@ impl<T: Trait> Module<T> {
             Error::<T>::ShouldNotBeLiquidated
         );
 
+        ensure!(
+            liquidator != loan.loaner_id,
+            Error::<T>::CanNotLiquidateYourself
+        );
+
         let trading_pair_prices =
             Self::fetch_trading_pair_prices(loan.loan_asset_id, loan.collateral_asset_id)
                 .ok_or(Error::<T>::TradingPairPriceMissing)?;
@@ -981,7 +987,7 @@ impl<T: Trait> Module<T> {
     }
 
     fn repay_cleanup(
-        _borrow: P2PBorrow<T::AssetId, T::Balance, T::BlockNumber, T::AccountId>,
+        borrow: P2PBorrow<T::AssetId, T::Balance, T::BlockNumber, T::AccountId>,
         loan: P2PLoan<T::AssetId, T::Balance, T::BlockNumber, T::AccountId>,
     ) {
         <Borrows<T>>::mutate(loan.borrow_id, |v| {

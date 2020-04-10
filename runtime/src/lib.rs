@@ -917,7 +917,7 @@ impl_runtime_apis! {
         }
     }
 
-    impl p2p_rpc_runtime_api::P2PApi<Block, AssetId, Balance, BlockNumber, AccountId> for Runtime {
+    impl p2p_rpc_runtime_api::P2PApi<Block, AssetId, Balance, BlockNumber, AccountId, Moment> for Runtime {
         fn get_borrows(size: Option<u64>, offset: Option<u64>) -> Vec<p2p_primitives::P2PBorrow<AssetId, Balance, BlockNumber, AccountId>> {
             PToP::get_borrows(size, offset)
         }
@@ -940,6 +940,10 @@ impl_runtime_apis! {
 
         fn get_user_loans(who: AccountId, size: Option<u64>, offset: Option<u64>) -> Vec<p2p_primitives::P2PLoan<AssetId, Balance, BlockNumber, AccountId>> {
             PToP::get_user_loans(who, size, offset)
+        }
+
+        fn get_secs_per_block() -> Moment {
+            SECS_PER_BLOCK
         }
     }
 
