@@ -209,7 +209,7 @@ api.tx.pToP.repay(borrow_id:P2PBorrowId)
     "price": "Price"
   },
   "P2PLoanHealth": {
-    "_enum": ["Well", "ToBeLiquidated", "Liquidated", "Dead", "Completed"]
+    "_enum": ["Well", "ToBeLiquidated", "Overdue", "Liquidated", "Dead", "Completed"]
   },
   "P2PLoan": {
     "id": "P2PLoanId",
@@ -283,7 +283,8 @@ api.tx.pToP.repay(borrow_id:P2PBorrowId)
     "status": "P2PLoanHealth",
     "interest_rate": "u64",
     "liquidation_type": "LiquidationType",
-    "can_be_liquidate": "bool"
+    "can_be_liquidate": "bool",
+    "due_height": "BlockNumber"
   }
 }
 ```
