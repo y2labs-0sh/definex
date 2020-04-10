@@ -53,7 +53,6 @@ fn staking_redeem_works() {
     let dave: <Test as system::Trait>::AccountId = get_from_seed::<sr25519::Public>("Dave");
 
     ExtBuilder::default().build().execute_with(|| {
-
         // mint 5000 unit usdt for dave;
         assert_ok!(GenericAssetTest::mint_free(
             &USDT,
@@ -75,15 +74,26 @@ fn staking_redeem_works() {
 
         // check status
         assert_eq!(GenericAssetTest::free_balance(&USDT, &dave), 4000);
-        assert_eq!(GenericAssetTest::free_balance(&USDT, &DepositLoanTest::collection_account_id()), 1000);
+        assert_eq!(
+            GenericAssetTest::free_balance(&USDT, &DepositLoanTest::collection_account_id()),
+            1000
+        );
         assert_eq!(DepositLoanTest::user_dtoken(dave.clone()), 1000);
 
         // dave deposit 500 unit usdt
-        assert_ok!(DepositLoanTest::make_redeem(&dave, &USDT, &DepositLoanTest::collection_account_id(), 500));
+        assert_ok!(DepositLoanTest::make_redeem(
+            &dave,
+            &USDT,
+            &DepositLoanTest::collection_account_id(),
+            500
+        ));
 
         // check status
         assert_eq!(GenericAssetTest::free_balance(&USDT, &dave), 4500);
-        assert_eq!(GenericAssetTest::free_balance(&USDT, &DepositLoanTest::collection_account_id()), 500);
+        assert_eq!(
+            GenericAssetTest::free_balance(&USDT, &DepositLoanTest::collection_account_id()),
+            500
+        );
         assert_eq!(DepositLoanTest::user_dtoken(dave.clone()), 500);
 
         // mint 5000 unit usdt to eve
@@ -106,10 +116,18 @@ fn staking_redeem_works() {
 
         // check status
         assert_eq!(GenericAssetTest::free_balance(&USDT, &eve), 4600);
-        assert_eq!(GenericAssetTest::free_balance(&USDT, &DepositLoanTest::collection_account_id()), 900);
+        assert_eq!(
+            GenericAssetTest::free_balance(&USDT, &DepositLoanTest::collection_account_id()),
+            900
+        );
         assert_eq!(DepositLoanTest::user_dtoken(eve.clone()), 400);
 
-        assert_ok!(DepositLoanTest::make_redeem(&eve, &USDT, &DepositLoanTest::collection_account_id(), 400));
+        assert_ok!(DepositLoanTest::make_redeem(
+            &eve,
+            &USDT,
+            &DepositLoanTest::collection_account_id(),
+            400
+        ));
     });
 }
 
@@ -120,87 +138,119 @@ fn apply_draw_addcollateral_repay_works() {
     let dave: <Test as system::Trait>::AccountId = get_from_seed::<sr25519::Public>("Dave");
 
     ExtBuilder::default().build().execute_with(|| {
-        // dave mint 50000 unit usdt
+        // dave mint 50_0000_0000 unit usdt
         assert_ok!(GenericAssetTest::mint_free(
             &USDT,
             &root,
             &dave,
-            &<<Test as generic_asset::Trait>::Balance as TryFrom<u64>>::try_from(50000)
+            &<<Test as generic_asset::Trait>::Balance as TryFrom<u64>>::try_from(50_0000_0000)
                 .ok()
                 .unwrap(),
         ));
 
-        // dave deposit 24000 unit USDT
+        // dave deposit 40_0000_0000 unit USDT
         assert_ok!(DepositLoanTest::create_staking(
             dave.clone(),
             USDT.clone(),
-            <<Test as generic_asset::Trait>::Balance as TryFrom<u64>>::try_from(24000)
+            <<Test as generic_asset::Trait>::Balance as TryFrom<u64>>::try_from(40_0000_0000)
                 .ok()
                 .unwrap()
         ));
 
-        // Eve mint 200 unit BTC
+        // Eve mint 20_0000_0000 unit BTC
         assert_ok!(GenericAssetTest::mint_free(
             &BTC,
             &root,
             &eve,
-            &<<Test as generic_asset::Trait>::Balance as TryFrom<u64>>::try_from(200)
+            &<<Test as generic_asset::Trait>::Balance as TryFrom<u64>>::try_from(20_0000_0000)
                 .ok()
                 .unwrap(),
         ));
 
-        // eve collateral 20 unit btc, borrow 300 unit usdt
+        // eve collateral 10_0000_0000 unit btc, borrow 25_0000_0000 unit usdt
         assert_ok!(DepositLoanTest::apply_for_loan(
             eve.clone(),
-            20,
-            300,
+            10_0000_0000,
+            25_0000_0000,
         ));
 
         // check status
-        // saving 2400 borrow 300 usdt, collection_account will left 2100 unit usdt
-        assert_eq!(GenericAssetTest::free_balance(&USDT, &DepositLoanTest::collection_account_id()), 24000 - 300);
+        // saving 40_0000_0000 borrow 25_0000_0000 usdt, collection_account will left 15_0000_0000 unit usdt
+        assert_eq!(
+            GenericAssetTest::free_balance(&USDT, &DepositLoanTest::collection_account_id()),
+            40_0000_0000 - 25_0000_0000
+        );
         // eve have 300 unit usdt；180 unit btc
-        assert_eq!(GenericAssetTest::free_balance(&BTC, &eve), 180);
-        assert_eq!(GenericAssetTest::free_balance(&USDT, &eve), 300);
+        assert_eq!(GenericAssetTest::free_balance(&BTC, &eve), 10_0000_0000);
+        assert_eq!(GenericAssetTest::free_balance(&USDT, &eve), 25_0000_0000);
         // pawn_shop have 20 unit btc
-        assert_eq!(GenericAssetTest::free_balance(&BTC, &DepositLoanTest::pawn_shop()), 20);
+        assert_eq!(
+            GenericAssetTest::free_balance(&BTC, &DepositLoanTest::pawn_shop()),
+            10_0000_0000
+        );
 
-        assert_eq!(DepositLoanTest::total_loan(), 300);
+        assert_eq!(DepositLoanTest::total_loan(), 25_0000_0000);
 
-        // current Utilization rate 300.0/24300 = 0.012345679012345678
-        // current borrow interest rate：0.05123456790123457
-        assert_eq!(DepositLoanTest::current_loan_interest_rate(), 5123456);
-        assert_eq!(DepositLoanTest::current_saving_interest_rate(), 64043); // 5123456 * 300 / 24000
+        // current Utilization rate 25_0000_0000/(25_0000_0000 + 40_0000_0000) = 0.38461538461538464
+        // current borrow interest rate：0.08846153846153847
+        assert_eq!(DepositLoanTest::current_loan_interest_rate(), 8846153);
+        assert_eq!(DepositLoanTest::current_saving_interest_rate(), 5528845); // 8846153 * 25_0000_0000 / 40_0000_0000
+
+        let eve_loan = DepositLoanTest::get_loan_by_id(0);
+        assert_eq!(eve_loan.collateral_balance_original, 10_0000_0000);
+        assert_eq!(eve_loan.collateral_balance_available, 9_9975_0000); // TODO: 10_0000_0000 - 25_0000_0000 / 10000
+        assert_eq!(eve_loan.loan_balance_total, 25_0000_0000);
 
         assert_ok!(DepositLoanTest::apply_for_loan(
             eve.clone(),
-            20,
-            22000,
+            5_0000_0000,
+            10_0000_0000
         ));
-        assert_eq!(GenericAssetTest::free_balance(&USDT,  &DepositLoanTest::collection_account_id()), 24000 - 300 - 22000);
-        assert_eq!(DepositLoanTest::total_loan(), 300 + 22000);
-
-        // current Utilization rate：`48164146` = (22000 + 300) / (24000 + 22000 + 300)
-        // loan interest rate：0.2*48164146+0.01*10**8 = 10632829
-        assert_eq!(DepositLoanTest::current_loan_interest_rate(), 10632829);
-
-
-        assert_ok!(DepositLoanTest::draw_from_loan(
-            eve.clone(),
-            0,
-            10
-        ));
+        assert_eq!(
+            GenericAssetTest::free_balance(&USDT, &DepositLoanTest::collection_account_id()),
+            40_0000_0000 - 10_0000_0000 - 25_0000_0000
+        );
+        assert_eq!(DepositLoanTest::total_loan(), 10_0000_0000 + 25_0000_0000);
 
         let eve_loan = DepositLoanTest::get_loan_by_id(0);
+        assert_eq!(GenericAssetTest::free_balance(&BTC, &eve), 5_0000_0000);
+
         assert_ok!(DepositLoanTest::add_loan_collateral(
             &eve_loan,
             eve.clone(),
-            10,
+            1_0000_0000,
         ));
 
+        assert_eq!(GenericAssetTest::free_balance(&BTC, &eve), 4_0000_0000);
+        assert_eq!(GenericAssetTest::free_balance(
+            &BTC,
+            &DepositLoanTest::pawn_shop()),
+            10_0000_0000 + 5_0000_0000 + 1_0000_0000
+        );
+
+        let eve_loan = DepositLoanTest::get_loan_by_id(0);
+
+        assert_eq!(
+            eve_loan.collateral_balance_original,
+            20_0000_0000 - 10_0000_0000 + 1_0000_0000
+        );
+        assert_eq!(
+            eve_loan.collateral_balance_available,
+            9_9975_0000 + 1_0000_0000
+        );
+
+        // draw from loan
+        assert_ok!(DepositLoanTest::draw_from_loan(
+            eve.clone(),
+            0,  // loan_id
+            1_0000_0000  // amount
+        ));
+
+        let eve_loan = DepositLoanTest::get_loan_by_id(0);
+        assert_eq!(eve_loan.loan_balance_total, 25_0000_0000 + 1_0000_0000);
+        assert_eq!(eve_loan.collateral_balance_available, 9_9975_0000 + 1_0000_0000 - 1_0000);
     });
 }
-
 
 #[test]
 fn deliver_interest_works() {
@@ -210,7 +260,6 @@ fn deliver_interest_works() {
     let frank: <Test as system::Trait>::AccountId = get_from_seed::<sr25519::Public>("Frank");
 
     ExtBuilder::default().build().execute_with(|| {
-
         // mint for dave 200_0000_0000 unit usdt:
         assert_ok!(GenericAssetTest::mint_free(
             &USDT,
@@ -266,9 +315,7 @@ fn deliver_interest_works() {
         assert_eq!(DepositLoanTest::current_saving_interest_rate(), 3142856); // 7857142 * 40_0000_0000 / 100_0000_0000 = 3142856.8
         assert_eq!(DepositLoanTest::value_of_tokens(), 1_0000_0000);
 
-
         // after 1500s, interest will be: 1500 * 7857142 / 10^8 / 365 / 86400 * total_loan = 149.48900304414002
-
 
         // calculate interest generate by time
         // 1.0 * 10**8 * (1.0 + 14900.0/10000000000) = 100000149
