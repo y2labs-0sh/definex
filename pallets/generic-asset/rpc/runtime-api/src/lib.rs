@@ -1,7 +1,9 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
+#[allow(unused_imports)]
 use codec::{Codec, Decode, Encode};
 use sp_runtime::traits::{MaybeDisplay, MaybeFromStr};
+#[allow(unused_imports)]
 use sp_runtime::RuntimeDebug;
 use sp_std::vec::Vec;
 
