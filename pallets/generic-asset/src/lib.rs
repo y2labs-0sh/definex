@@ -16,24 +16,19 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use codec::{Decode, Encode, Error as CodecError, HasCompact, Input, Output};
-
 use sp_runtime::traits::{
-    AtLeast32Bit, Bounded, CheckedAdd, CheckedSub, MaybeSerializeDeserialize, Member, One,
-    Saturating, Zero,
+    AtLeast32Bit, CheckedAdd, CheckedSub, MaybeSerializeDeserialize, Member, One, Zero,
 };
+#[allow(unused_imports)]
 use sp_runtime::{DispatchError, DispatchResult, RuntimeDebug};
 
 use frame_support::{
     decl_error, decl_event, decl_module, decl_storage, ensure,
-    traits::{
-        BalanceStatus, Currency, ExistenceRequirement, Imbalance, LockIdentifier, LockableCurrency,
-        ReservableCurrency, SignedImbalance, TryDrop, WithdrawReason, WithdrawReasons,
-    },
+    traits::{BalanceStatus, LockIdentifier, WithdrawReason, WithdrawReasons},
     IterableStorageMap, Parameter, StorageMap,
 };
 use frame_system::{self as system, ensure_root, ensure_signed};
-use sp_std::prelude::*;
-use sp_std::{cmp, fmt::Debug, result};
+use sp_std::{fmt::Debug, prelude::*};
 
 mod mock;
 mod tests;
@@ -614,12 +609,15 @@ impl<T: Trait> Module<T> {
     /// move the amount into reserved,
     /// update the corresponding balance lock
     pub fn increase_reserved_balance(
-        asset_id:&T::AssetId,
+        asset_id: &T::AssetId,
         lock_id: u128,
         who: &T::AccountId,
         amount: T::Balance,
-    ) -> Result<(), &'static str>{
-        ensure!(Self::lock_id_exists(asset_id, who, lock_id), Error::<T>::MissingLock);
+    ) -> Result<(), &'static str> {
+        ensure!(
+            Self::lock_id_exists(asset_id, who, lock_id),
+            Error::<T>::MissingLock
+        );
 
         let original_reserve_balance = Self::reserved_balance(asset_id, who);
         let original_free_balance = Self::free_balance(asset_id, who);
@@ -639,7 +637,12 @@ impl<T: Trait> Module<T> {
             }
         });
 
-        Self::deposit_event(RawEvent::IncreaseReserved(asset_id.clone(), who.clone(), amount, lock_id));
+        Self::deposit_event(RawEvent::IncreaseReserved(
+            asset_id.clone(),
+            who.clone(),
+            amount,
+            lock_id,
+        ));
 
         Ok(())
     }
@@ -662,8 +665,14 @@ impl<T: Trait> Module<T> {
         let idf = Self::generic_asset_lock_identifier(asset_id);
         match lock_id {
             Some(lock_id) => {
-                ensure!(Self::lock_id_exists(asset_id, who, lock_id), Error::<T>::MissingLock);
-                ensure!(Self::locked_balance(asset_id, who, lock_id).unwrap() == amount, Error::<T>::InvalidLockedBalance);
+                ensure!(
+                    Self::lock_id_exists(asset_id, who, lock_id),
+                    Error::<T>::MissingLock
+                );
+                ensure!(
+                    Self::locked_balance(asset_id, who, lock_id).unwrap() == amount,
+                    Error::<T>::InvalidLockedBalance
+                );
                 valid_lock_id = Some(lock_id);
             }
             None => {
@@ -696,9 +705,9 @@ impl<T: Trait> Module<T> {
     /// NOTE: LOW-LEVEL: This will not attempt to maintain total issuance. It is expected that
     /// the caller will do this.
     pub fn slash(
-        asset_id: &T::AssetId,
-        who: &T::AccountId,
-        amount: T::Balance,
+        _asset_id: &T::AssetId,
+        _who: &T::AccountId,
+        _amount: T::Balance,
     ) -> Option<T::Balance> {
         // let free_balance = Self::free_balance(asset_id, who);
         // let free_slash = sp_std::cmp::min(free_balance, amount);
@@ -742,11 +751,11 @@ impl<T: Trait> Module<T> {
     /// NOTE: LOW-LEVEL: This will not attempt to maintain total issuance. It is expected that
     /// the caller will do this.
     pub fn repatriate_reserved(
-        asset_id: &T::AssetId,
-        who: &T::AccountId,
-        beneficiary: &T::AccountId,
-        amount: T::Balance,
-        status: BalanceStatus,
+        _asset_id: &T::AssetId,
+        _who: &T::AccountId,
+        _beneficiary: &T::AccountId,
+        _amount: T::Balance,
+        _status: BalanceStatus,
     ) -> T::Balance {
         // let b = Self::reserved_balance(asset_id, who);
         // let slash = sp_std::cmp::min(b, amount);
@@ -906,7 +915,11 @@ impl<T: Trait> Module<T> {
         }
     }
 
-    pub fn find_lock_by_id(asset_id: &T::AssetId, who: &T::AccountId, lock_id: u128) -> Option<BalanceLock<T::Balance, T::AssetId>> {
+    pub fn find_lock_by_id(
+        asset_id: &T::AssetId,
+        who: &T::AccountId,
+        lock_id: u128,
+    ) -> Option<BalanceLock<T::Balance, T::AssetId>> {
         let locks = <Locks<T>>::get(Self::generic_asset_lock_identifier(asset_id), who);
         for l in locks {
             if l.id == lock_id {

@@ -26,8 +26,8 @@
 
 #[allow(unused_imports)]
 use codec::{Decode, Encode, Error as codecErr, HasCompact, Input, Output};
-#[cfg(feature = "std")]
-use serde::{Deserialize, Serialize};
+// #[cfg(feature = "std")]
+// use serde::{Deserialize, Serialize};
 #[allow(unused_imports)]
 use sp_runtime::{
     traits::{
@@ -68,7 +68,7 @@ pub use p2p_primitives::*;
 mod mock;
 mod tests;
 
-const LOCK_ID: LockIdentifier = *b"dfxlsbrw";
+// const LOCK_ID: LockIdentifier = *b"dfxlsbrw";
 
 pub const INTEREST_RATE_PRECISION: u64 = 10000_0000;
 pub const LTV_SCALE: u32 = 10000;
@@ -981,7 +981,7 @@ impl<T: Trait> Module<T> {
     }
 
     fn repay_cleanup(
-        borrow: P2PBorrow<T::AssetId, T::Balance, T::BlockNumber, T::AccountId>,
+        _borrow: P2PBorrow<T::AssetId, T::Balance, T::BlockNumber, T::AccountId>,
         loan: P2PLoan<T::AssetId, T::Balance, T::BlockNumber, T::AccountId>,
     ) {
         <Borrows<T>>::mutate(loan.borrow_id, |v| {

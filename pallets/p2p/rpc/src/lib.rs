@@ -3,15 +3,12 @@ use std::sync::Arc;
 use codec::Codec;
 use jsonrpc_core::{Error as RPCError, ErrorCode, Result};
 use jsonrpc_derive::rpc;
-use serde::{Deserialize, Serialize};
+// use serde::{Deserialize, Serialize};
 use sp_api::ProvideRuntimeApi;
 use sp_blockchain::HeaderBackend;
-use sp_core::{Bytes, H256};
-use sp_rpc::number;
-use sp_runtime::{
-    generic::BlockId,
-    traits::{Block as BlockT, Header as HeaderT, MaybeDisplay, MaybeFromStr},
-};
+// use sp_core::{Bytes, H256};
+// use sp_rpc::number;
+use sp_runtime::{generic::BlockId, traits::Block as BlockT};
 
 pub use self::gen_client::Client as P2PClient;
 pub use p2p_rpc_runtime_api::{self as runtime_api, P2PApi as P2PRuntimeApi};
