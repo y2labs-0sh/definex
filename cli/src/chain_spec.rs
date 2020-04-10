@@ -408,6 +408,9 @@ pub fn testnet_genesis(
             liquidate_ltv: 15000,
             min_borrow_terms: 1,
             min_borrow_interest_rate: 10000,
+            charge_penalty: true,
+            liquidator_discount: 90, // 90%
+            liquidation_penalty: 50, // 50%
         }),
         deposit_loan: Some(DepositLoanConfig {
             collection_asset_id: 0,

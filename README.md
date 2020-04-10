@@ -68,7 +68,7 @@ This is just for frontend developer
         "price": "Price"
     },
     "P2PLoanHealth": {
-        "_enum": ["Well", "ToBeLiquidated", "Liquidated", "Dead", "Completed"]
+        "_enum": ["Well", "ToBeLiquidated", "Overdue", "Liquidated", "Dead", "Completed"]
     },
     "P2PLoan": {
         "id": "P2PLoanId",
@@ -177,7 +177,8 @@ This is just for frontend developer
       "status": "P2PLoanHealth",
       "interest_rate": "u64",
       "liquidation_type": "LiquidationType",
-      "can_be_liquidate": "bool"
+      "can_be_liquidate": "bool",
+      "due_height": "BlockNumber"
     }
 }
 ```

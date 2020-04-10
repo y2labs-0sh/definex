@@ -115,7 +115,7 @@ impl<C, Block, AssetId, Balance, BlockNumber, AccountId, Moment>
         AccountId,
         Moment,
         Vec<P2PBorrow<AssetId, Balance, BlockNumber, AccountId>>,
-        Vec<P2PLoanRPC<AssetId, Balance, AccountId>>,
+        Vec<P2PLoanRPC<AssetId, Balance, BlockNumber, AccountId>>,
     > for P2P<C, Block>
 where
     Block: BlockT,
@@ -190,7 +190,7 @@ where
         size: Option<u64>,
         offset: Option<u64>,
         at: Option<<Block as BlockT>::Hash>,
-    ) -> Result<Vec<P2PLoanRPC<AssetId, Balance, AccountId>>> {
+    ) -> Result<Vec<P2PLoanRPC<AssetId, Balance, BlockNumber, AccountId>>> {
         let api = self.client.runtime_api();
         let at = BlockId::hash(at.unwrap_or_else(|| self.client.info().best_hash));
         let list = api
@@ -211,7 +211,7 @@ where
         size: Option<u64>,
         offset: Option<u64>,
         at: Option<<Block as BlockT>::Hash>,
-    ) -> Result<Vec<P2PLoanRPC<AssetId, Balance, AccountId>>> {
+    ) -> Result<Vec<P2PLoanRPC<AssetId, Balance, BlockNumber, AccountId>>> {
         let api = self.client.runtime_api();
         let at = BlockId::hash(at.unwrap_or_else(|| self.client.info().best_hash));
         let list = api
@@ -231,7 +231,7 @@ where
         size: Option<u64>,
         offset: Option<u64>,
         at: Option<<Block as BlockT>::Hash>,
-    ) -> Result<Vec<P2PLoanRPC<AssetId, Balance, AccountId>>> {
+    ) -> Result<Vec<P2PLoanRPC<AssetId, Balance, BlockNumber, AccountId>>> {
         let api = self.client.runtime_api();
         let at = BlockId::hash(at.unwrap_or_else(|| self.client.info().best_hash));
         let list = api
@@ -257,7 +257,7 @@ where
         api: ApiRef<C::Api>,
         at: BlockId<Block>,
         list: Vec<P2PLoan<AssetId, Balance, BlockNumber, AccountId>>,
-    ) -> Result<Vec<P2PLoanRPC<AssetId, Balance, AccountId>>>
+    ) -> Result<Vec<P2PLoanRPC<AssetId, Balance, BlockNumber, AccountId>>>
     where
         C::Api: P2PRuntimeApi<Block, AssetId, Balance, BlockNumber, AccountId, Moment>,
         AssetId: Codec + Copy + Clone,
@@ -292,42 +292,45 @@ where
 
         Ok(list
             .iter()
-            .map(|v| -> P2PLoanRPC<AssetId, Balance, AccountId> {
-                let due = TryInto::<u64>::try_into(v.due).ok().unwrap();
-                let blocks_left = if due <= block_number {
-                    0u64
-                } else {
-                    due - block_number
-                };
-
-                P2PLoanRPC {
-                    id: v.id,
-                    borrow_id: v.borrow_id,
-                    borrower_id: v.borrower_id.clone(),
-                    loaner_id: v.loaner_id.clone(),
-                    secs_left: blocks_left * secs_per_block,
-                    collateral_asset_id: v.collateral_asset_id,
-                    collateral_balance: v.collateral_balance,
-                    loan_asset_id: v.loan_asset_id,
-                    loan_balance: v.loan_balance,
-                    status: v.status,
-                    interest_rate: v.interest_rate,
-                    liquidation_type: v.liquidation_type,
-                    can_be_liquidate: if v.status == P2PLoanHealth::ToBeLiquidated
-                        || v.status == P2PLoanHealth::Overdue
-                    {
-                        true
+            .map(
+                |v| -> P2PLoanRPC<AssetId, Balance, BlockNumber, AccountId> {
+                    let due = TryInto::<u64>::try_into(v.due).ok().unwrap();
+                    let blocks_left = if due <= block_number {
+                        0u64
                     } else {
-                        false
-                    },
-                }
-            })
+                        due - block_number
+                    };
+
+                    P2PLoanRPC {
+                        id: v.id,
+                        borrow_id: v.borrow_id,
+                        borrower_id: v.borrower_id.clone(),
+                        loaner_id: v.loaner_id.clone(),
+                        due_height: v.due,
+                        secs_left: blocks_left * secs_per_block,
+                        collateral_asset_id: v.collateral_asset_id,
+                        collateral_balance: v.collateral_balance,
+                        loan_asset_id: v.loan_asset_id,
+                        loan_balance: v.loan_balance,
+                        status: v.status,
+                        interest_rate: v.interest_rate,
+                        liquidation_type: v.liquidation_type,
+                        can_be_liquidate: if v.status == P2PLoanHealth::ToBeLiquidated
+                            || v.status == P2PLoanHealth::Overdue
+                        {
+                            true
+                        } else {
+                            false
+                        },
+                    }
+                },
+            )
             .collect::<_>())
     }
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
-pub struct P2PLoanRPC<AssetId, Balance, AccountId> {
+pub struct P2PLoanRPC<AssetId, Balance, BlockNumber, AccountId> {
     #[serde(bound(serialize = "Balance: std::fmt::Display"))]
     #[serde(serialize_with = "serialize_as_string")]
     #[serde(bound(deserialize = "Balance: std::str::FromStr"))]
@@ -362,4 +365,5 @@ pub struct P2PLoanRPC<AssetId, Balance, AccountId> {
     pub interest_rate: u64,
     pub liquidation_type: LiquidationType,
     pub can_be_liquidate: bool,
+    pub due_height: BlockNumber,
 }

@@ -94,6 +94,12 @@ decl_storage! {
         pub MoneyPool get(money_pool) config() : T::AccountId;
         /// Platform is just a account receiving potential fees
         pub Platform get(platform) config() : T::AccountId;
+        /// if charge_penalty set to true, penalty will be given to the platform
+        pub ChargePenalty get(fn charge_penalty) config() : bool;
+        /// liquidation penalty, percentage
+        pub LiquidationPenaly get(fn liquidation_penalty) config() : u32;
+        /// liquidator's discount for buying the collateral asset, percentage
+        pub LiquidatorDisount get(fn liquidator_discount) config() : u32;
         /// TradingPairs contains all supported trading pairs, oracle should provide price information for all trading pairs.
         pub TradingPairs get(trading_pairs) config() : Vec<TradingPair<T::AssetId>>;
         /// LTV must be greater than this value to create a new borrow
@@ -161,11 +167,13 @@ decl_module! {
         fn deposit_event() = default;
 
         fn on_finalize(block_number: T::BlockNumber) {
-            if (block_number % 2.into()).is_zero() && !((block_number + 1.into()) % 5.into()).is_zero() {
-                Self::periodic_check_borrows(block_number);
-            }
-            if ((block_number + 1.into()) % 5.into()).is_zero()  {
-                Self::periodic_check_loans(block_number);
+            if !Self::paused() {
+                if (block_number % 2.into()).is_zero() && !((block_number + 1.into()) % 5.into()).is_zero() {
+                    Self::periodic_check_borrows(block_number);
+                }
+                if ((block_number + 1.into()) % 5.into()).is_zero()  {
+                    Self::periodic_check_loans(block_number);
+                }
             }
         }
 
@@ -754,8 +762,8 @@ impl<T: Trait> Module<T> {
                     borrower_id: borrow.who.clone(),
                     loaner_id: loaner.clone(),
                     due: current_block_number
-                        + T::Days::get()
-                            * <T::BlockNumber as TryFrom<u64>>::try_from(borrow.terms)
+                        + // T::Days::get()
+                             <T::BlockNumber as TryFrom<u64>>::try_from(borrow.terms)
                                 .ok()
                                 .unwrap(),
                     collateral_asset_id: borrow.collateral_asset_id,
@@ -854,9 +862,9 @@ impl<T: Trait> Module<T> {
                 || loan.status == P2PLoanHealth::ToBeLiquidated,
             Error::<T>::ShouldNotBeLiquidated
         );
-
+        // borrower is not allowed to liquidate his own borrows on purpose
         ensure!(
-            liquidator != loan.loaner_id,
+            liquidator != loan.borrower_id,
             Error::<T>::CanNotLiquidateYourself
         );
 
@@ -874,6 +882,7 @@ impl<T: Trait> Module<T> {
             );
         }
 
+        // no matter what, the expected interest should be fixed and given to loaner
         let borrow = <Borrows<T>>::get(loan.borrow_id);
         let expected_interest = Self::calculate_expected_interest(
             borrow.interest_rate,
@@ -881,7 +890,7 @@ impl<T: Trait> Module<T> {
             borrow.borrow_balance,
         );
         let need_to_pay = loan.loan_balance + expected_interest;
-        let collateral_in_borrow_asset_balance =
+        let collateral_worth =
             <T::Balance as TryFrom<u64>>::try_from(trading_pair_prices.collateral_asset_price)
                 .ok()
                 .unwrap()
@@ -890,98 +899,99 @@ impl<T: Trait> Module<T> {
                     .ok()
                     .unwrap();
 
-        match loan.liquidation_type {
-            LiquidationType::SellCollateral => {
-                ensure!(
-                    <generic_asset::Module<T>>::free_balance(&borrow.borrow_asset_id, &liquidator)
-                        >= need_to_pay,
-                    Error::<T>::NotEnoughBalance
-                );
-                // TODO:: exchange with liquidator
-            }
-            LiquidationType::JustCollateral => {
-                if need_to_pay >= collateral_in_borrow_asset_balance {
-                    // move 95% of collateral to loaner and give 5% to liquidator
-                    let balance_to_loaner = loan.collateral_balance * 95.into() / 100.into();
-                    let balance_to_liquidator = loan.collateral_balance - balance_to_loaner;
-                    <generic_asset::Module<T>>::make_transfer_with_event(
-                        &loan.collateral_asset_id,
-                        &Self::money_pool(),
-                        &loan.loaner_id,
-                        balance_to_loaner,
-                    )?;
-                    <generic_asset::Module<T>>::make_transfer_with_event(
-                        &loan.collateral_asset_id,
-                        &Self::money_pool(),
-                        &liquidator,
-                        balance_to_liquidator,
-                    )
-                    .or_else(|err| -> DispatchResult {
-                        <generic_asset::Module<T>>::make_transfer_with_event(
-                            &loan.collateral_asset_id,
-                            &loan.loaner_id,
-                            &Self::money_pool(),
-                            balance_to_loaner,
-                        )?;
-                        Err(err)
-                    })?;
-                } else {
-                    // move 90% of collateral to loaner and give 5% to liquidator and 5% to platform
-                    let balance_to_loaner = loan.collateral_balance * 9.into() / 10.into();
-                    let balance_to_liquidator =
-                        (loan.collateral_balance - balance_to_loaner) / 2.into();
-                    let balance_to_platform =
-                        loan.collateral_balance - balance_to_loaner - balance_to_liquidator;
+        // collateral_net_worth is the price that we sell to liquidator
+        let collateral_net_worth: T::Balance =
+            collateral_worth * Self::liquidator_discount().into() / 100u32.into();
 
-                    <generic_asset::Module<T>>::make_transfer_with_event(
-                        &loan.collateral_asset_id,
-                        &Self::money_pool(),
-                        &loan.loaner_id,
-                        balance_to_loaner,
-                    )?;
-                    <generic_asset::Module<T>>::make_transfer_with_event(
-                        &loan.collateral_asset_id,
-                        &Self::money_pool(),
-                        &liquidator,
-                        balance_to_liquidator,
-                    )
-                    .or_else(|err| -> DispatchResult {
-                        <generic_asset::Module<T>>::make_transfer_with_event(
-                            &loan.collateral_asset_id,
-                            &loan.loaner_id,
-                            &Self::money_pool(),
-                            balance_to_loaner,
-                        )?;
-                        Err(err)
-                    })?;
-                    <generic_asset::Module<T>>::make_transfer_with_event(
-                        &loan.collateral_asset_id,
-                        &Self::money_pool(),
-                        &Self::platform(),
-                        balance_to_platform,
-                    )
-                    .or_else(|err| -> DispatchResult {
-                        <generic_asset::Module<T>>::make_transfer_with_event(
-                            &loan.collateral_asset_id,
-                            &liquidator,
-                            &Self::money_pool(),
-                            balance_to_liquidator,
-                        )?;
-                        <generic_asset::Module<T>>::make_transfer_with_event(
-                            &loan.collateral_asset_id,
-                            &loan.loaner_id,
-                            &Self::money_pool(),
-                            balance_to_loaner,
-                        )?;
-                        Err(err)
-                    })?;
-                }
+        // make sure the liquidator has enough to buy the collateral with a decent discount
+        ensure!(
+            <generic_asset::Module<T>>::free_balance(&loan.loan_asset_id, &liquidator)
+                >= collateral_net_worth,
+            Error::<T>::NotEnoughBalance
+        );
 
-                Self::liquidation_cleanup(loan);
+        if need_to_pay >= collateral_net_worth {
+            // TODO:: consider doing nothing
+            //
+            // move 95% of collateral to loaner and give 5% to liquidator
+            // let balance_to_loaner = loan.collateral_balance * 95.into() / 100.into();
+            // let balance_to_liquidator = loan.collateral_balance - balance_to_loaner;
+            // <generic_asset::Module<T>>::make_transfer_with_event(
+            //     &loan.collateral_asset_id,
+            //     &Self::money_pool(),
+            //     &loan.loaner_id,
+            //     balance_to_loaner,
+            // )?;
+            // <generic_asset::Module<T>>::make_transfer_with_event(
+            //     &loan.collateral_asset_id,
+            //     &Self::money_pool(),
+            //     &liquidator,
+            //     balance_to_liquidator,
+            // )
+            // .or_else(|err| -> DispatchResult {
+            //     <generic_asset::Module<T>>::make_transfer_with_event(
+            //         &loan.collateral_asset_id,
+            //         &loan.loaner_id,
+            //         &Self::money_pool(),
+            //         balance_to_loaner,
+            //     )?;
+            //     Err(err)
+            // })?;
+        } else {
+            // first exchange with the liquidator
+            <generic_asset::Module<T>>::make_transfer_with_event(
+                &loan.loan_asset_id,
+                &liquidator,
+                &Self::money_pool(),
+                collateral_net_worth,
+            )?;
+            <generic_asset::Module<T>>::make_transfer_with_event(
+                &loan.collateral_asset_id,
+                &Self::money_pool(),
+                &liquidator,
+                loan.collateral_balance,
+            )
+            .or_else(|err| -> DispatchResult {
+                <generic_asset::Module<T>>::make_transfer_with_event(
+                    &loan.loan_asset_id,
+                    &Self::money_pool(),
+                    &liquidator,
+                    collateral_net_worth,
+                )?;
+                Err(err)
+            })?;
 
-                Self::deposit_event(RawEvent::LoanLiquidated(loan_id));
+            // give back what belongs to loaner
+            <generic_asset::Module<T>>::make_transfer_with_event(
+                &loan.loan_asset_id,
+                &Self::money_pool(),
+                &loan.loaner_id,
+                need_to_pay,
+            )?;
+
+            let rest = collateral_net_worth - need_to_pay;
+            let penalty: T::Balance = rest * Self::liquidation_penalty().into() / 100u32.into();
+            // penalty taken, return the rest to the poor borrower
+            <generic_asset::Module<T>>::make_transfer_with_event(
+                &loan.loan_asset_id,
+                &Self::money_pool(),
+                &loan.borrower_id,
+                rest - penalty,
+            )?;
+
+            if Self::charge_penalty() {
+                <generic_asset::Module<T>>::make_transfer_with_event(
+                    &loan.loan_asset_id,
+                    &Self::money_pool(),
+                    &Self::platform(),
+                    penalty,
+                )?;
             }
         }
+
+        Self::liquidation_cleanup(loan);
+
+        Self::deposit_event(RawEvent::LoanLiquidated(loan_id));
 
         Ok(())
     }

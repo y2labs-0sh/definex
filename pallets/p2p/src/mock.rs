@@ -49,6 +49,12 @@ pub type AccountPublic = <Signature as Verify>::Signer;
 
 pub type BlockNumber = u64;
 
+impl_outer_dispatch! {
+    pub enum Call for Test where origin: Origin {
+        P2p,
+    }
+}
+
 thread_local! {
       pub(crate) static EXISTENTIAL_DEPOSIT: RefCell<u128> = RefCell::new(0);
       static TRANSFER_FEE: RefCell<u128> = RefCell::new(0);
@@ -63,8 +69,6 @@ pub mod constants {
     pub const USDT: <Test as generic_asset::Trait>::AssetId = 0;
     pub const BTC: <Test as generic_asset::Trait>::AssetId = 1;
 }
-
-use self::constants::*;
 
 impl_outer_origin! {
       pub enum Origin for Test  where system = system {}
@@ -131,7 +135,7 @@ impl timestamp::Trait for Test {
 }
 impl sudo::Trait for Test {
     type Event = MetaEvent;
-    type Call = Call<Test>;
+    type Call = Call;
 }
 
 impl generic_asset::Trait for Test {
@@ -161,6 +165,7 @@ parameter_types! {
 impl Trait for Test {
     type Event = MetaEvent;
     type Days = DaysInBlockNumber;
+    type Call = Call;
 }
 
 impl_outer_event! {
@@ -254,6 +259,9 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
         liquidate_ltv: 15000,
         min_borrow_terms: 1,
         min_borrow_interest_rate: 10000,
+        charge_penalty: true,
+        liquidator_discount: 90,
+        liquidation_penalty: 50,
     }
     .assimilate_storage(&mut t)
     .unwrap();
