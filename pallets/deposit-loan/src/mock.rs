@@ -25,8 +25,7 @@ use sp_core::H256;
 pub use sp_core::{sr25519, Pair, Public};
 use std::cell::RefCell;
 use support::{
-    impl_outer_dispatch, impl_outer_event, impl_outer_origin, parameter_types,
-    traits::{OnFinalize, OnInitialize},
+    impl_outer_event, impl_outer_origin, parameter_types,
     weights::Weight,
 };
 
@@ -52,8 +51,6 @@ pub mod constants {
     pub const USDT: <Test as generic_asset::Trait>::AssetId = 0;
     pub const BTC: <Test as generic_asset::Trait>::AssetId = 1;
 }
-
-use self::constants::*;
 
 impl_outer_origin! {
     pub enum Origin for Test where system = system {}
@@ -190,6 +187,7 @@ pub fn get_from_seed<TPublic: Public>(seed: &str) -> <TPublic::Pair as Pair>::Pu
         .public()
 }
 
+#[allow(unused_variables, unused_mut)]
 pub fn new_test_ext() -> sp_io::TestExternalities {
     let mut t = system::GenesisConfig::default()
         .build_storage::<Test>()
