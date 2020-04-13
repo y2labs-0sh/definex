@@ -409,7 +409,7 @@ fn liquidate_works() {
             &USDT,
             &root,
             &dave,
-            &<<Test as generic_asset::Trait>::Balance as TryFrom<u64>>::try_from(1000_00000000)
+            &<<Test as generic_asset::Trait>::Balance as TryFrom<u64>>::try_from(10000_00000000)
                 .ok()
                 .unwrap(),
         ));
@@ -522,14 +522,6 @@ fn liquidate_works() {
 
         let loan = P2PTest::loans(loan_id);
         assert_eq!(loan.status, P2PLoanHealth::Overdue);
-        assert_ok!(GenericAssetTest::mint_free(
-            &USDT,
-            &root,
-            &eve,
-            &<<Test as generic_asset::Trait>::Balance as TryFrom<u64>>::try_from(2_00000000)
-                .ok()
-                .unwrap(),
-        ));
         assert_ok!(P2PTest::liquidate_loan(dave, loan_id));
         let loan = P2PTest::loans(loan_id);
         assert_eq!(loan.status, P2PLoanHealth::Liquidated);
@@ -579,12 +571,7 @@ fn add_works() {
                 .ok()
                 .unwrap();
         let borrow_id = P2PTest::next_borrow_id();
-        assert_ok!(P2PTest::create_borrow(
-            eve,
-            one_btc,
-            trading_pair,
-            options,
-        ));
+        assert_ok!(P2PTest::create_borrow(eve, one_btc, trading_pair, options,));
 
         assert_ok!(P2PTest::add_collateral(eve, borrow_id, one_btc));
     });
@@ -643,12 +630,7 @@ fn cancel_works() {
         assert_ok!(P2PTest::remove_borrow(eve, borrow_id));
 
         let borrow_id = P2PTest::next_borrow_id();
-        assert_ok!(P2PTest::create_borrow(
-            eve,
-            one_btc,
-            trading_pair,
-            options,
-        ));
+        assert_ok!(P2PTest::create_borrow(eve, one_btc, trading_pair, options,));
         assert_ok!(P2PTest::add_collateral(eve, borrow_id, one_btc));
         assert_ok!(P2PTest::remove_borrow(eve, borrow_id));
     });

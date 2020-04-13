@@ -16,6 +16,7 @@ std = [
     "sp-core/std",
     "sp-io/std",
     "timestamp/std",
+    "balances/std",
     "generic-asset/std",
     "new-oracle/std",
     "p2p-primitives/std",
@@ -73,6 +74,12 @@ path = "../generic-asset"
 [dependencies.new-oracle]
 default_features = false
 path = "../new-oracle"
+
+[dependencies.balances]
+default_features = false
+git = "https://github.com/paritytech/substrate.git"
+package = "pallet-balances"
+rev = "6ce091737dc7f114dd420f8b879f8a467c1d501b"
 
 [dependencies.timestamp]
 default_features = false
