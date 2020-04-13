@@ -19,6 +19,7 @@
 #![allow(dead_code)]
 
 use crate::*;
+#[allow(unused_imports)]
 use support::{
     assert_noop, assert_ok,
     traits::{OnFinalize, OnInitialize},
@@ -174,6 +175,9 @@ fn apply_draw_addcollateral_repay_works() {
             25_0000_0000,
         ));
 
+        assert_eq!(GenericAssetTest::free_balance(&USDT, &eve), 25_0000_0000);
+        assert_eq!(DepositLoanTest::account_ids_with_loans().contains(&eve), true);
+
         // check status
         // saving 40_0000_0000 borrow 25_0000_0000 usdt, collection_account will left 15_0000_0000 unit usdt
         assert_eq!(
@@ -206,6 +210,7 @@ fn apply_draw_addcollateral_repay_works() {
             5_0000_0000,
             10_0000_0000
         ));
+        assert_eq!(GenericAssetTest::free_balance(&USDT, &eve), 25_0000_0000+10_0000_0000);
         assert_eq!(
             GenericAssetTest::free_balance(&USDT, &DepositLoanTest::collection_account_id()),
             40_0000_0000 - 10_0000_0000 - 25_0000_0000
@@ -220,6 +225,7 @@ fn apply_draw_addcollateral_repay_works() {
             eve.clone(),
             1_0000_0000,
         ));
+        assert_eq!(GenericAssetTest::free_balance(&BTC, &eve), 20_0000_0000 - 10_0000_0000 - 5_0000_0000 - 1_0000_0000);
 
         assert_eq!(GenericAssetTest::free_balance(&BTC, &eve), 4_0000_0000);
         assert_eq!(GenericAssetTest::free_balance(
@@ -249,6 +255,38 @@ fn apply_draw_addcollateral_repay_works() {
         let eve_loan = DepositLoanTest::get_loan_by_id(0);
         assert_eq!(eve_loan.loan_balance_total, 25_0000_0000 + 1_0000_0000);
         assert_eq!(eve_loan.collateral_balance_available, 9_9975_0000 + 1_0000_0000 - 1_0000);
+        assert_eq!(eve_loan.collateral_balance_original, 10_0000_0000 + 1_0000_0000);
+
+        // repay a loan & check eve's loan status
+
+        assert_eq!(DepositLoanTest::loan_id_with_all_loans().contains(&0), true);
+        assert_eq!(DepositLoanTest::loan_id_with_all_loans().len(), 2);
+        assert_eq!(DepositLoanTest::loans_by_account(&eve).len(), 2);
+        assert_eq!(DepositLoanTest::account_ids_with_loans().len(), 1);
+        assert_eq!(GenericAssetTest::free_balance(&USDT, &eve), 25_0000_0000 + 10_0000_0000 + 1_0000_0000);
+
+        assert_ok!(DepositLoanTest::repay_for_loan(
+            eve.clone(), 0
+        ));
+
+        assert_eq!(DepositLoanTest::loan_id_with_all_loans().contains(&0), false);
+        assert_eq!(DepositLoanTest::loan_id_with_all_loans().len(), 1);
+        assert_eq!(DepositLoanTest::loans_by_account(&eve).len(), 1);
+        assert_eq!(DepositLoanTest::account_ids_with_loans().len(), 1);
+        assert_eq!(DepositLoanTest::account_ids_with_loans().contains(&eve), true);
+
+        assert_eq!(GenericAssetTest::free_balance(&USDT, &eve), 10_0000_0000);
+
+        // repay for loan id 1, and check status
+
+        let eve_loan = DepositLoanTest::get_loan_by_id(1);
+
+        assert_ok!(DepositLoanTest::repay_for_loan(
+            eve.clone(), 1
+        ));
+
+        assert_eq!(DepositLoanTest::account_ids_with_loans().contains(&eve), false);
+        assert_eq!(DepositLoanTest::loan_id_with_all_loans().len(), 0);
     });
 }
 
@@ -324,5 +362,6 @@ fn deliver_interest_works() {
         // next_n_block(5u32.into());
         // assert_eq!(DepositLoanTest::value_of_tokens(), 100000149);
         // assert_eq!(GenericAssetTest::free_balance(&USDT, &DepositLoanTest::collection_account_id()), 6000014948);
+
     });
 }

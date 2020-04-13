@@ -395,6 +395,9 @@ decl_module! {
         pub fn repay_loan(origin, loan_id: LoanId) -> LoanResult {
             ensure!(!Self::paused(), Error::<T>::Paused);
             let who = ensure_signed(origin)?;
+            ensure!(<Loans<T>>::contains_key(loan_id), Error::<T>::UnknownLoanId);
+            let loan = <Loans<T>>::get(loan_id);
+            ensure!(loan.who == who, Error::<T>::NotLoanOwner);
             Self::repay_for_loan(who.clone(), loan_id)
         }
 
@@ -617,7 +620,10 @@ impl<T: Trait> Module<T> {
                 });
 
                 LoanIdWithAllLoans::append_or_put(vec![loan_id.clone()]);
-                <AccountIdsWithLiveLoans<T>>::append_or_put(vec![who.clone()]);
+
+                if ! <AccountIdsWithLiveLoans<T>>::get().contains(&who) {
+                    <AccountIdsWithLiveLoans<T>>::append_or_put(vec![who.clone()]);
+                }
 
                 <TotalLoan<T>>::mutate(|v| *v += actual_loan_amount);
                 <TotalCollateral<T>>::mutate(|v| *v += actual_collateral_amount);
@@ -700,8 +706,6 @@ impl<T: Trait> Module<T> {
         let pawn_shop = Self::pawn_shop();
         let loan = <Loans<T>>::get(loan_id);
 
-        ensure!(<Loans<T>>::contains_key(loan_id), Error::<T>::UnknownLoanId);
-        ensure!(loan.who == who, Error::<T>::NotLoanOwner);
         ensure!(
             <generic_asset::Module<T>>::free_balance(&loan_asset_id, &who)
                 >= loan.loan_balance_total,
@@ -734,7 +738,7 @@ impl<T: Trait> Module<T> {
                 .collect::<Vec<_>>();
         });
 
-        if <LoansByAccount<T>>::get(&loan.who).len() == 1 {
+        if <LoansByAccount<T>>::get(&loan.who).len() == 0 {
             <AccountIdsWithLiveLoans<T>>::mutate(|v| {
                 *v = v
                     .clone()
@@ -1006,6 +1010,13 @@ impl<T: Trait> Module<T> {
 
         let collateral_asset_id = Self::collateral_asset_id();
         let collection_asset_id = Self::collection_asset_id();
+        let collection_account_id = Self::collection_account_id();
+
+        ensure!(
+            <generic_asset::Module<T>>::free_balance(&collection_asset_id, &collection_account_id)
+                >= amount,
+            Error::<T>::NotEnoughBalance
+        );
 
         let price_pair = Self::fetch_trading_pair_prices(collection_asset_id, collateral_asset_id)
             .ok_or(Error::<T>::TradingPairPriceMissing)?;
@@ -1034,6 +1045,13 @@ impl<T: Trait> Module<T> {
             v.collateral_balance_available = v.collateral_balance_available
                 - amount * price_pair_borrow_asset_price / price_pair_collateral_asset_price;
         });
+
+        <generic_asset::Module<T>>::make_transfer_with_event(
+            &collection_asset_id,
+            &collection_account_id,
+            &who,
+            amount,
+        )?;
 
         <TotalLoan<T>>::mutate(|v| *v += amount);
 
