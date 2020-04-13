@@ -27,13 +27,14 @@ use support::{
 // The testing primitives are very useful for avoiding having to work with signatures
 // or public keys. `u64` is used as the `AccountId` and no `Signature`s are required.
 use crate::{GenesisConfig, Module, Trait};
-use balances;
 use sp_core::H256;
 pub use sp_core::{sr25519, Pair, Public};
 use sp_std::convert::TryFrom;
 use sp_std::str::FromStr;
 use sp_version::RuntimeVersion;
 use std::cell::RefCell;
+
+use balances::Call as BalancesCall;
 
 #[allow(unused_imports)]
 pub use sp_runtime::{
@@ -49,14 +50,8 @@ pub type AccountPublic = <Signature as Verify>::Signer;
 
 pub type BlockNumber = u64;
 
-impl_outer_dispatch! {
-    pub enum Call for Test where origin: Origin {
-        P2p,
-    }
-}
-
 thread_local! {
-      pub(crate) static EXISTENTIAL_DEPOSIT: RefCell<u128> = RefCell::new(0);
+      pub(crate) static EXISTENTIAL_DEPOSIT: RefCell<u64> = RefCell::new(0);
       static TRANSFER_FEE: RefCell<u128> = RefCell::new(0);
       static CREATION_FEE: RefCell<u128> = RefCell::new(0);
 }
@@ -71,7 +66,25 @@ pub mod constants {
 }
 
 impl_outer_origin! {
-      pub enum Origin for Test  where system = system {}
+    pub enum Origin for Test where system = system {}
+}
+// I don't wanna know anything of this MACRO, just follow this pattern will do
+impl_outer_dispatch! {
+    pub enum Call for Test where origin: Origin {
+        system::SystemTest,
+        balances::Balances,
+        p2p::P2PTest,
+    }
+}
+impl_outer_event! {
+    pub enum MetaEvent for Test {
+        system<T>,
+        balances<T>,
+        sudo<T>,
+        new_oracle<T>,
+        generic_asset<T>,
+        p2p<T>,
+    }
 }
 
 #[derive(Clone, Eq, PartialEq)]
@@ -99,7 +112,7 @@ impl system::Trait for Test {
     type AvailableBlockRatio = AvailableBlockRatio;
     type Version = ();
     type ModuleToIndex = ();
-    type AccountData = ();
+    type AccountData = balances::AccountData<u64>;
     type OnNewAccount = ();
     type OnKilledAccount = ();
 }
@@ -123,6 +136,20 @@ impl system::offchain::CreateTransaction<Test, Extrinsic> for Test {
     )> {
         Some((call, (nonce, ())))
     }
+}
+
+pub struct ExistentialDeposit;
+impl Get<u64> for ExistentialDeposit {
+    fn get() -> u64 {
+        EXISTENTIAL_DEPOSIT.with(|v| *v.borrow())
+    }
+}
+impl balances::Trait for Test {
+    type Balance = u64;
+    type Event = MetaEvent;
+    type DustRemoval = ();
+    type ExistentialDeposit = ExistentialDeposit;
+    type AccountStore = SystemTest;
 }
 
 parameter_types! {
@@ -168,19 +195,10 @@ impl Trait for Test {
     type Call = Call;
 }
 
-impl_outer_event! {
-    pub enum MetaEvent for Test {
-        system<T>,
-        sudo<T>,
-        new_oracle<T>,
-        generic_asset<T>,
-        p2p<T>,
-    }
-}
-
 pub type P2PTest = Module<Test>;
 pub type SystemTest = system::Module<Test>;
 pub type GenericAssetTest = generic_asset::Module<Test>;
+pub type Balances = balances::Module<Test>;
 
 pub struct ExtBuilder {}
 impl Default for ExtBuilder {
@@ -249,8 +267,8 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
     .unwrap();
 
     GenesisConfig::<Test> {
-        money_pool: money_pool,
-        platform: platform,
+        money_pool,
+        platform,
         trading_pairs: vec![crate::TradingPair {
             collateral: 1 as u32,
             borrow: 0 as u32,
