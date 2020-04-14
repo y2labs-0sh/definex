@@ -101,3 +101,4 @@ sp-version = { git = "https://github.com/paritytech/substrate.git", package = "s
 system = { git = "https://github.com/paritytech/substrate.git", package = "frame-system", rev = "6ce091737dc7f114dd420f8b879f8a467c1d501b" }
 sp-core = { git = "https://github.com/paritytech/substrate.git", package = "sp-core", rev = "6ce091737dc7f114dd420f8b879f8a467c1d501b" }
 hex-literal = '0.2.1'
+

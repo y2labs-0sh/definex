@@ -125,6 +125,12 @@ api.query.pToP.money_pool() : AccountId
 
 api.query.pToP.platform() : AccountId
 
+api.query.pToP.charge_penalty() : bool
+
+api.query.pToP.liquidation_penalty() : u32
+
+api.query.pToP.liquidator_discount() : u32
+
 api.query.pToP.borrows(BorrowId) : P2PBorrow
 
 api.query.pToP.borrow_ids_by_account_id(AccountId) : []P2PBorrowId

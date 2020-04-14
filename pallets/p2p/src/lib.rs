@@ -152,6 +152,7 @@ decl_error! {
         AddCollateralNotAllowed,
         FailToReserve,
         CanNotLiquidateYourself,
+        CanNotCancelBorrow,
     }
 }
 
@@ -234,7 +235,7 @@ decl_module! {
         }
 
         /// a borrower place a make order to ask for some money
-        #[weight = SimpleDispatchInfo::FixedNormal(1_000_000)]
+        #[weight = SimpleDispatchInfo::FixedNormal(10_000_000)]
         pub fn make(origin, collateral_balance: T::Balance, trading_pair: TradingPair<T::AssetId>, borrow_options: P2PBorrowOptions<T::Balance,T::BlockNumber>) -> DispatchResult {
             ensure!(!Self::paused(), Error::<T>::Paused);
             let who = ensure_signed(origin)?;
@@ -250,7 +251,7 @@ decl_module! {
         }
 
         /// a lender sees a make order profitable, takes it and lends the amount of money to the borrower
-        #[weight = SimpleDispatchInfo::FixedNormal(1_000_000)]
+        #[weight = SimpleDispatchInfo::FixedNormal(10_000_000)]
         pub fn take(origin, borrow_id: P2PBorrowId) -> DispatchResult {
             ensure!(!Self::paused(), Error::<T>::Paused);
             let who = ensure_signed(origin)?;
@@ -258,7 +259,7 @@ decl_module! {
         }
 
         /// anyone can liquidate a loan if the loan meets the liquidation requirements
-        #[weight = SimpleDispatchInfo::FixedNormal(1_000_000)]
+        #[weight = SimpleDispatchInfo::FixedNormal(500_000)]
         pub fn liquidate(origin, loan_id: P2PLoanId) -> DispatchResult {
             ensure!(!Self::paused(), Error::<T>::Paused);
             let who = ensure_signed(origin)?;
@@ -266,7 +267,7 @@ decl_module! {
         }
 
         /// the borrower of a loan can add additional collaterals to lower the risk of being liquidated
-        #[weight = SimpleDispatchInfo::FixedNormal(500_000)]
+        #[weight = SimpleDispatchInfo::FixedNormal(5_000_000)]
         pub fn add(origin, borrow_id: P2PBorrowId, amount: T::Balance) -> DispatchResult {
             ensure!(!Self::paused(), Error::<T>::Paused);
             let who = ensure_signed(origin)?;
@@ -274,7 +275,7 @@ decl_module! {
         }
 
         /// before due, the borrower returns what he borrowed and pays fee
-        #[weight = SimpleDispatchInfo::FixedNormal(1_000_000)]
+        #[weight = SimpleDispatchInfo::FixedNormal(5_00_000)]
         pub fn repay(origin, borrow_id: P2PBorrowId) -> DispatchResult {
             ensure!(!Self::paused(), Error::<T>::Paused);
             let who = ensure_signed(origin)?;
@@ -693,6 +694,10 @@ impl<T: Trait> Module<T> {
         );
 
         let borrow = <Borrows<T>>::get(borrow_id);
+        ensure!(
+            borrow.status == P2PBorrowStatus::Alive,
+            Error::<T>::CanNotCancelBorrow
+        );
         <generic_asset::Module<T>>::unreserve(
             &borrow.collateral_asset_id,
             &who,
@@ -716,7 +721,7 @@ impl<T: Trait> Module<T> {
     }
 
     pub fn create_loan(loaner: T::AccountId, borrow_id: P2PBorrowId) -> DispatchResult {
-        let borrow = Self::ensure_borrow_available(borrow_id)?;
+        let borrow = Self::ensure_borrow_available_for_loan(borrow_id)?;
 
         // get collateral amount from locked balance
         // to make sure that amount of asset is indeed reserved
@@ -1069,7 +1074,7 @@ impl<T: Trait> Module<T> {
     }
 
     // when found a unavailable borrow, write the new borrow status
-    pub fn ensure_borrow_available(
+    pub fn ensure_borrow_available_for_loan(
         borrow_id: P2PBorrowId,
     ) -> Result<P2PBorrow<T::AssetId, T::Balance, T::BlockNumber, T::AccountId>, DispatchError>
     {
