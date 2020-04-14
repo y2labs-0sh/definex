@@ -951,6 +951,9 @@ impl_runtime_apis! {
         fn get_loans(size: Option<u64>, offset: Option<u64>) -> Option<Vec<deposit_loan_primitives::Loan<AccountId, Balance>>> {
             DepositLoan::get_loans(size, offset)
         }
+        fn get_user_loans(who: AccountId, size: Option<u64>, offset: Option<u64>) -> Option<Vec<deposit_loan_primitives::Loan<AccountId, Balance>>> {
+            DepositLoan::get_user_loans(who, size, offset)
+        }
     }
 
     impl sp_session::SessionKeys<Block> for Runtime {

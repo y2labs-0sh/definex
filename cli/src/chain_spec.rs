@@ -420,7 +420,6 @@ pub fn testnet_genesis(
             loan_asset_id: 0,
             global_ltv_limit: 6666_6667,
             global_liquidation_threshold: 1_0000_0000,
-            global_warning_threshold: 5000_0000,
             next_loan_id: 0,
 
             penalty_rate: 50,

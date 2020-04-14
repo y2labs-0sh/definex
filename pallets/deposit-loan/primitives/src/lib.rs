@@ -3,7 +3,7 @@
 #[allow(unused_imports)]
 use codec::{Decode, Encode, Error as codecErr, HasCompact, Input, Output};
 #[cfg(feature = "std")]
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
 #[allow(unused_imports)]
 use sp_runtime::traits::{
     AtLeast32Bit, Bounded, CheckedAdd, CheckedMul, CheckedSub, MaybeDisplay,
@@ -33,6 +33,45 @@ use support::{
     IterableStorageMap,
 };
 
+
+#[cfg(feature = "std")]
+pub fn serialize_as_string<S: Serializer, T: std::fmt::Display>(
+    t: &T,
+    serializer: S,
+) -> Result<S::Ok, S::Error> {
+    serializer.serialize_str(&t.to_string())
+}
+
+#[cfg(feature = "std")]
+pub fn deserialize_from_string<'de, D: Deserializer<'de>, T: std::str::FromStr>(
+    deserializer: D,
+) -> Result<T, D::Error> {
+    let s = String::deserialize(deserializer)?;
+    s.parse::<T>()
+        .map_err(|_| serde::de::Error::custom("Parse from string failed"))
+}
+
+#[cfg(feature = "std")]
+pub fn serialize_option_as_string<S: Serializer, T: std::fmt::Display>(
+    t: &Option<T>,
+    serializer: S,
+) -> Result<S::Ok, S::Error> {
+    match t {
+        Some(tv) => serializer.serialize_str(&tv.to_string()),
+        None => serializer.serialize_none(),
+    }
+}
+
+#[cfg(feature = "std")]
+pub fn deserialize_option_from_string<'de, D: Deserializer<'de>, T: std::str::FromStr>(
+    deserializer: D,
+) -> Result<Option<T>, D::Error> {
+    let s = String::deserialize(deserializer)?;
+    s.parse::<T>()
+        .map(|v| Some(v))
+        .map_err(|_| serde::de::Error::custom("Parse from string failed"))
+}
+
 pub const SEC_PER_DAY: u32 = 86400;
 pub const DAYS_PER_YEAR: u32 = 365;
 pub const INTEREST_RATE_PREC: u32 = 10000_0000;
@@ -49,7 +88,6 @@ pub type LoanResult<T = ()> = result::Result<T, DispatchError>;
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub enum LoanHealth {
     Well,
-    Warning(LTV),
     Liquidating(LTV),
 }
 impl Default for LoanHealth {
@@ -61,7 +99,29 @@ impl Default for LoanHealth {
 #[derive(Encode, Decode, Clone, Default, PartialEq, Eq, RuntimeDebug)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub struct CollateralLoan<Balance> {
+
+    #[cfg_attr(
+        feature = "std",
+        serde(bound(serialize = "Balance: std::fmt::Display"))
+    )]
+    #[cfg_attr(feature = "std", serde(serialize_with = "serialize_as_string"))]
+    #[cfg_attr(
+        feature = "std",
+        serde(bound(deserialize = "Balance: std::str::FromStr"))
+    )]
+    #[cfg_attr(feature = "std", serde(deserialize_with = "deserialize_from_string"))]
     pub collateral_amount: Balance,
+
+    #[cfg_attr(
+        feature = "std",
+        serde(bound(serialize = "Balance: std::fmt::Display"))
+    )]
+    #[cfg_attr(feature = "std", serde(serialize_with = "serialize_as_string"))]
+    #[cfg_attr(
+        feature = "std",
+        serde(bound(deserialize = "Balance: std::str::FromStr"))
+    )]
+    #[cfg_attr(feature = "std", serde(deserialize_with = "deserialize_from_string"))]
     pub loan_amount: Balance,
 }
 
@@ -71,39 +131,44 @@ pub struct CollateralLoan<Balance> {
 pub struct Loan<AccountId, Balance> {
     pub id: LoanId,
     pub who: AccountId,
-    pub collateral_balance_original: Balance,
-    pub collateral_balance_available: Balance,
-    pub loan_balance_total: Balance,
-    pub status: LoanHealth,
-}
 
-impl<AccountId, Balance> Loan<AccountId, Balance>
-where
-    Balance: Encode
-        + Decode
-        + Parameter
-        + Member
-        + AtLeast32Bit
-        + Default
-        + Copy
-        + MaybeSerializeDeserialize
-        + Debug,
-    //  Moment: Parameter + Default + SimpleArithmetic + Copy,
-    AccountId: Parameter + Member + MaybeSerializeDeserialize + MaybeDisplay + Ord + Default,
-{
-    pub fn get_ltv(
-        collateral_amount: Balance,
-        loan_amount: Balance,
-        collection_price: u64,
-        collateral_price: u64,
-    ) -> LTV {
-        let collateral_price = <Balance as TryFrom<u128>>::try_from(collateral_price as u128)
-            .ok()
-            .unwrap();
-        let ltv = (loan_amount * Balance::from(collection_price as u32) * Balance::from(PRICE_PREC) * Balance::from(LTV_PREC))
-            / (collateral_amount * collateral_price);
-        TryInto::<LTV>::try_into(ltv).ok().unwrap()
-    }
+    #[cfg_attr(
+        feature = "std",
+        serde(bound(serialize = "Balance: std::fmt::Display"))
+    )]
+    #[cfg_attr(feature = "std", serde(serialize_with = "serialize_as_string"))]
+    #[cfg_attr(
+        feature = "std",
+        serde(bound(deserialize = "Balance: std::str::FromStr"))
+    )]
+    #[cfg_attr(feature = "std", serde(deserialize_with = "deserialize_from_string"))]
+    pub collateral_balance_original: Balance,
+
+    #[cfg_attr(
+        feature = "std",
+        serde(bound(serialize = "Balance: std::fmt::Display"))
+    )]
+    #[cfg_attr(feature = "std", serde(serialize_with = "serialize_as_string"))]
+    #[cfg_attr(
+        feature = "std",
+        serde(bound(deserialize = "Balance: std::str::FromStr"))
+    )]
+    #[cfg_attr(feature = "std", serde(deserialize_with = "deserialize_from_string"))]
+    pub collateral_balance_available: Balance,
+
+    #[cfg_attr(
+        feature = "std",
+        serde(bound(serialize = "Balance: std::fmt::Display"))
+    )]
+    #[cfg_attr(feature = "std", serde(serialize_with = "serialize_as_string"))]
+    #[cfg_attr(
+        feature = "std",
+        serde(bound(deserialize = "Balance: std::str::FromStr"))
+    )]
+    #[cfg_attr(feature = "std", serde(deserialize_with = "deserialize_from_string"))]
+    pub loan_balance_total: Balance,
+
+    pub status: LoanHealth,
 }
 
 #[derive(Debug, Encode, Decode, Clone, PartialEq, Eq)]

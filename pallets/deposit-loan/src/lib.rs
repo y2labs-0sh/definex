@@ -13,13 +13,6 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-// This module is meant for Web3 grant. In this module, definex implemented a DeFi model which follows a 'maker-taker'.
-
-// use new_oracle to get btc price
-// Notice：the btc price used here is consered as two assets exchange ratio.
-// let current_price = <new_oracle::Module<T>>::current_price(&token);
-// let price: u64 = TryInto::<u64>::try_into(current_price).unwrap_or(0);
-
 //! **deposit-loan** is an implementation of Financial market protocol that
 //! provides both liquid money markets for cross-chain assets and capital markets
 //! for longer-term cryptocurrency  loans.
@@ -161,9 +154,6 @@ decl_storage! {
         /// when a loan's LTV reaches or is above this threshold, this loan must be been liquidating
         pub GlobalLiquidationThreshold get(global_liquidation_threshold) config() : LTV;
 
-        /// when a loan's LTV reaches or is above this threshold, a warning event will be fired and there should be a centralized system monitoring on this
-        pub GlobalWarningThreshold get(global_warning_threshold) config() : LTV;
-
         /// increase monotonically
         NextLoanId get(next_loan_id) config() : LoanId;
 
@@ -275,13 +265,6 @@ decl_module! {
         #[weight = SimpleDispatchInfo::FixedNormal(0)]
         pub fn set_global_liquidation_threshold(origin, threshold: LTV) -> LoanResult {
             ensure_root(origin)?;
-            GlobalWarningThreshold::put(threshold);
-            Ok(())
-        }
-
-        #[weight = SimpleDispatchInfo::FixedNormal(0)]
-        pub fn set_global_warning_threshold(origin, threshold: LTV) -> LoanResult {
-            ensure_root(origin)?;
             GlobalLiquidationThreshold::put(threshold);
             Ok(())
         }
@@ -337,16 +320,6 @@ decl_module! {
         }
 
         #[weight = SimpleDispatchInfo::FixedNormal(0)]
-        pub fn sudo_staking(origin, asset_id: T::AssetId, amount: T::Balance, delegatee: T::AccountId) -> DispatchResult {
-            ensure!(!Self::paused(), Error::<T>::Paused);
-            ensure_root(origin)?;
-            ensure!(<CollectionAssetId<T>>::get() == asset_id, Error::<T>::SavingTypeNotAllowed);
-            ensure!(<generic_asset::Module<T>>::free_balance(&asset_id, &delegatee) >= amount, Error::<T>::NotEnoughBalance);
-            Self::create_staking(delegatee.clone(), asset_id, amount)?;
-            Ok(())
-        }
-
-        #[weight = SimpleDispatchInfo::FixedNormal(0)]
         pub fn redeem(origin, iou_asset_id: T::AssetId, iou_asset_amount: T::Balance) -> DispatchResult {
             ensure!(!Self::paused(), Error::<T>::Paused);
             let who = ensure_signed(origin)?;
@@ -357,24 +330,6 @@ decl_module! {
 
             Self::make_redeem(
                 &who,
-                &collection_asset_id,
-                &collection_account_id,
-                iou_asset_amount,
-            )?;
-            Ok(())
-        }
-
-        #[weight = SimpleDispatchInfo::FixedNormal(0)]
-        pub fn sudo_redeem(origin, iou_asset_id: T::AssetId, iou_asset_amount: T::Balance, delegatee: T::AccountId) -> DispatchResult {
-            ensure!(!Self::paused(), "module is paused");
-            ensure_root(origin)?;
-            let collection_asset_id = Self::collection_asset_id();
-            let collection_account_id = Self::collection_account_id();
-            ensure!(<generic_asset::Module<T>>::free_balance(&collection_asset_id, &collection_account_id) >= iou_asset_amount, Error::<T>::NotEnoughBalance);
-            ensure!(collection_asset_id == iou_asset_id, Error::<T>::UnknowAssetId);
-
-            Self::make_redeem(
-                &delegatee,
                 &collection_asset_id,
                 &collection_account_id,
                 iou_asset_amount,
@@ -414,7 +369,7 @@ decl_module! {
             Self::mark_loan_liquidated(&Self::get_loan_by_id(loan_id), liquidation_account, auction_balance)
         }
 
-        /// when user got a warning of high-risk LTV, user can lower the LTV by add more collateral
+        /// when user got a high-risk LTV, user can lower the LTV by add more collateral
         #[weight = SimpleDispatchInfo::FixedNormal(10)]
         pub fn add_collateral(origin, loan_id: LoanId, amount: T::Balance) -> DispatchResult {
             ensure!(!Self::paused(), Error::<T>::Paused);
@@ -459,12 +414,34 @@ impl<T: Trait> Module<T> {
         }
     }
 
+    pub fn get_user_loans(
+        who: T::AccountId,
+        size: Option<u64>,
+        offset: Option<u64>,
+    ) -> Option<Vec<Loan<T::AccountId, T::Balance>>> {
+        let offset = offset.unwrap_or(0);
+        let size = size.unwrap_or(0);
+        let mut res = Vec::with_capacity(size as usize);
+        let account_loans = <LoansByAccount<T>>::get(who);
+
+        for i in account_loans.iter().rev().skip(offset as usize).take(size as usize) {
+            res.push(<Loans<T>>::get(i))
+        }
+
+        if res.len() > 0 {
+            Some(res)
+        } else {
+            None
+        }
+    }
+
+
     pub fn create_staking(
         who: T::AccountId,
         asset_id: T::AssetId,
         amount: T::Balance,
     ) -> DispatchResult {
-        ensure!(!amount.is_zero(), "saving can't be zero");
+        ensure!(!amount.is_zero(), Error::<T>::SavingIsZero);
 
         let collection_account_id = Self::collection_account_id();
         let value_of_tokens = Self::value_of_tokens();
@@ -476,6 +453,7 @@ impl<T: Trait> Module<T> {
             amount,
         )?;
 
+        // TODO: front end have multipled 10^8 alreadly
         let user_dtoken = <T::Balance as TryFrom<u128>>::try_from(10_u128.pow(8))
             .ok()
             .unwrap()
@@ -517,6 +495,8 @@ impl<T: Trait> Module<T> {
                 .ok()
                 .unwrap()
             / value_of_tokens;
+
+        // TODO: if user deposit all saving, can delete this saving.
 
         <UserDtoken<T>>::mutate(who.clone(), |v| {
             *v -= dtoken_will_cut;
@@ -967,9 +947,8 @@ impl<T: Trait> Module<T> {
         collection_asset_price: u64,
         collateral_asset_price: u64,
         liquidation: LTV,
-        warning: LTV,
     ) -> LoanHealth {
-        let current_ltv = <Loan<T::AccountId, T::Balance>>::get_ltv(
+        let current_ltv = Self::get_ltv(
             loan.collateral_balance_available,
             loan.loan_balance_total,
             collection_asset_price,
@@ -980,11 +959,21 @@ impl<T: Trait> Module<T> {
             return LoanHealth::Liquidating(current_ltv);
         }
 
-        if current_ltv >= warning {
-            return LoanHealth::Warning(current_ltv);
-        }
-
         LoanHealth::Well
+    }
+
+    fn get_ltv(
+        collateral_amount: T::Balance,
+        loan_amount: T::Balance,
+        collection_price: u64,
+        collateral_price: u64,
+    ) -> LTV {
+        let collateral_price = <T::Balance as TryFrom<u128>>::try_from(collateral_price as u128)
+            .ok()
+            .unwrap();
+        let ltv = (loan_amount * T::Balance::from(collection_price as u32) * T::Balance::from(PRICE_PREC) * T::Balance::from(LTV_PREC))
+            / (collateral_amount * collateral_price);
+        TryInto::<LTV>::try_into(ltv).ok().unwrap()
     }
 
     fn liquidate_loan(loan_id: LoanId, liquidating_ltv: LTV) {
@@ -1074,7 +1063,6 @@ impl<T: Trait> Module<T> {
     fn on_each_block(_height: T::BlockNumber) {
         let collateral_asset_id = Self::collateral_asset_id();
         let liquidation_thd = Self::global_liquidation_threshold();
-        let warning_thd = Self::global_warning_threshold();
         let collection_asset_id = Self::collection_asset_id();
 
         let price_pair = Self::fetch_trading_pair_prices(collection_asset_id, collateral_asset_id);
@@ -1099,15 +1087,8 @@ impl<T: Trait> Module<T> {
                 price_pair.borrow_asset_price,
                 price_pair.collateral_asset_price,
                 liquidation_thd,
-                warning_thd,
             ) {
                 LoanHealth::Well => {}
-                LoanHealth::Warning(ltv) => {
-                    if loan.status != LoanHealth::Warning(ltv) {
-                        <Loans<T>>::mutate(&loan.id, |v| v.status = LoanHealth::Warning(ltv));
-                        Self::deposit_event(RawEvent::Warning(loan_id, ltv));
-                    }
-                }
 
                 LoanHealth::Liquidating(l) => {
                     Self::liquidate_loan(loan_id, l);
@@ -1289,6 +1270,7 @@ decl_error! {
         ReachLoanCap,
         InvalidCollateralLoanAmounts,
         OverLTVLimit,
+        SavingIsZero,
     }
 }
 
@@ -1310,9 +1292,6 @@ decl_event!(
         LoanCreated(Loan),
         LoanDrawn(LoanId, Balance),
         LoanRepaid(LoanId, Balance, Balance),
-        // Expired(LoanId, AccountId, Balance, Balance),
-        // Extended(LoanId, AccountId),
-        Warning(LoanId, LTV),
         Paused(LineNumber, BlockNumber, ExtrinsicIndex),
 
         Liquidating(LoanId, AccountId, CollateralBalanceAvailable, TotalLoanBalance),
