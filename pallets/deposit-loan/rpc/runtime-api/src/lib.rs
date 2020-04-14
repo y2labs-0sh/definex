@@ -12,5 +12,6 @@ sp_api::decl_runtime_apis! {
     {
         fn get_loans(size: Option<u64>, offset: Option<u64>) -> Option<Vec<Loan<AccountId, Balance>>>;
 
+        fn get_user_loans(who: AccountId, size: Option<u64>, offset: Option<u64>) -> Option<Vec<Loan<AccountId, Balance>>>;
     }
 }

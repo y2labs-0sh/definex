@@ -414,6 +414,28 @@ impl<T: Trait> Module<T> {
         }
     }
 
+    pub fn get_user_loans(
+        who: T::AccountId,
+        size: Option<u64>,
+        offset: Option<u64>,
+    ) -> Option<Vec<Loan<T::AccountId, T::Balance>>> {
+        let offset = offset.unwrap_or(0);
+        let size = size.unwrap_or(0);
+        let mut res = Vec::with_capacity(size as usize);
+        let account_loans = <LoansByAccount<T>>::get(who);
+
+        for i in account_loans.iter().rev().skip(offset as usize).take(size as usize) {
+            res.push(<Loans<T>>::get(i))
+        }
+
+        if res.len() > 0 {
+            Some(res)
+        } else {
+            None
+        }
+    }
+
+
     pub fn create_staking(
         who: T::AccountId,
         asset_id: T::AssetId,

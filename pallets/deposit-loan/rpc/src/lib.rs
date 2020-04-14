@@ -51,6 +51,15 @@ pub trait DepositLoanApi<BlockHash, AccountId, LoanResult> {
         offset: Option<u64>,
         at: Option<BlockHash>,
     ) -> Result<LoanResult>;
+
+    #[rpc(name = "depositLoan_userLoans")]
+    fn user_loans(
+        &self,
+        who: AccountId,
+        size: Option<u64>,
+        offset: Option<u64>,
+        at: Option<BlockHash>,
+    ) -> Result<LoanResult>;
 }
 
 
@@ -105,5 +114,30 @@ where
             Some(list) => Ok(list),
         }
     }
+
+    fn user_loans(&self, who: AccountId, size: Option<u64>, offset: Option<u64>, at: Option<<Block as BlockT>::Hash>) -> Result<Vec<Loan<AccountId, Balance>>> {
+
+        let api = self.client.runtime_api();
+        let at = BlockId::hash(at.unwrap_or_else(|| self.client.info().best_hash));
+        let list = api
+            .get_user_loans(&at, who, size, offset)
+            .map_err(|e| RPCError {
+                code: ErrorCode::ServerError(Error::RuntimeError.into()),
+                message: Error::RuntimeError.into(),
+                data: Some(format!("{:?}", e).into()),
+            })
+            .unwrap();
+        match list {
+            None => {
+                return Err(RPCError {
+                    code: ErrorCode::ServerError(Error::NoBorrows.into()),
+                    message: Error::NoBorrows.into(),
+                    data: None,
+                });
+            }
+            Some(list) => Ok(list),
+        }
+    }
+
 }
 

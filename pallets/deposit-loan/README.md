@@ -130,3 +130,43 @@ Error::InvalidCollateralLoanAmounts => 12,
 Error::OverLTVLimit => 13,
 Error::SavingIsZero => 14,
 ```
+
+## RPC types
+
+```
+{
+    "depositLoan": {
+        "loans": {
+            "params": [
+                {
+                    "name": "size",
+                    "type": "Option<u64>"
+                },
+                {
+                    "name": "offset",
+                    "type": "Option<u64>"
+                }
+            ],
+            "type": "Vec<Loan>"
+        },
+        "userloans": {
+            "params": [
+                {
+                    "name": "who",
+                    "type": "AccountId"
+                },
+                {
+                    "name": "size",
+                    "type": "Option<u64>"
+                },
+                {
+                    "name": "offset",
+                    "type": "Option<u64>"
+                }
+            ],
+            "type": "Vec<Loan>"
+        }
+    }
+}
+```
+
