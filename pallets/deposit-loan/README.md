@@ -149,7 +149,7 @@ Error::SavingIsZero => 14,
             ],
             "type": "Vec<Loan>"
         },
-        "userloans": {
+        "userLoans": {
             "params": [
                 {
                     "name": "who",
