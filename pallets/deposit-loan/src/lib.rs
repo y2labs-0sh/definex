@@ -13,13 +13,6 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-// This module is meant for Web3 grant. In this module, definex implemented a DeFi model which follows a 'maker-taker'.
-
-// use new_oracle to get btc price
-// Notice：the btc price used here is consered as two assets exchange ratio.
-// let current_price = <new_oracle::Module<T>>::current_price(&token);
-// let price: u64 = TryInto::<u64>::try_into(current_price).unwrap_or(0);
-
 //! **deposit-loan** is an implementation of Financial market protocol that
 //! provides both liquid money markets for cross-chain assets and capital markets
 //! for longer-term cryptocurrency  loans.
@@ -337,16 +330,6 @@ decl_module! {
         }
 
         #[weight = SimpleDispatchInfo::FixedNormal(0)]
-        pub fn sudo_staking(origin, asset_id: T::AssetId, amount: T::Balance, delegatee: T::AccountId) -> DispatchResult {
-            ensure!(!Self::paused(), Error::<T>::Paused);
-            ensure_root(origin)?;
-            ensure!(<CollectionAssetId<T>>::get() == asset_id, Error::<T>::SavingTypeNotAllowed);
-            ensure!(<generic_asset::Module<T>>::free_balance(&asset_id, &delegatee) >= amount, Error::<T>::NotEnoughBalance);
-            Self::create_staking(delegatee.clone(), asset_id, amount)?;
-            Ok(())
-        }
-
-        #[weight = SimpleDispatchInfo::FixedNormal(0)]
         pub fn redeem(origin, iou_asset_id: T::AssetId, iou_asset_amount: T::Balance) -> DispatchResult {
             ensure!(!Self::paused(), Error::<T>::Paused);
             let who = ensure_signed(origin)?;
@@ -357,24 +340,6 @@ decl_module! {
 
             Self::make_redeem(
                 &who,
-                &collection_asset_id,
-                &collection_account_id,
-                iou_asset_amount,
-            )?;
-            Ok(())
-        }
-
-        #[weight = SimpleDispatchInfo::FixedNormal(0)]
-        pub fn sudo_redeem(origin, iou_asset_id: T::AssetId, iou_asset_amount: T::Balance, delegatee: T::AccountId) -> DispatchResult {
-            ensure!(!Self::paused(), "module is paused");
-            ensure_root(origin)?;
-            let collection_asset_id = Self::collection_asset_id();
-            let collection_account_id = Self::collection_account_id();
-            ensure!(<generic_asset::Module<T>>::free_balance(&collection_asset_id, &collection_account_id) >= iou_asset_amount, Error::<T>::NotEnoughBalance);
-            ensure!(collection_asset_id == iou_asset_id, Error::<T>::UnknowAssetId);
-
-            Self::make_redeem(
-                &delegatee,
                 &collection_asset_id,
                 &collection_account_id,
                 iou_asset_amount,
@@ -464,7 +429,7 @@ impl<T: Trait> Module<T> {
         asset_id: T::AssetId,
         amount: T::Balance,
     ) -> DispatchResult {
-        ensure!(!amount.is_zero(), "saving can't be zero");
+        ensure!(!amount.is_zero(), Error::<T>::SavingIsZero);
 
         let collection_account_id = Self::collection_account_id();
         let value_of_tokens = Self::value_of_tokens();
@@ -476,6 +441,7 @@ impl<T: Trait> Module<T> {
             amount,
         )?;
 
+        // TODO: front end have multipled 10^8 alreadly
         let user_dtoken = <T::Balance as TryFrom<u128>>::try_from(10_u128.pow(8))
             .ok()
             .unwrap()
@@ -517,6 +483,8 @@ impl<T: Trait> Module<T> {
                 .ok()
                 .unwrap()
             / value_of_tokens;
+
+        // TODO: if user deposit all saving, can delete this saving.
 
         <UserDtoken<T>>::mutate(who.clone(), |v| {
             *v -= dtoken_will_cut;
@@ -1289,6 +1257,7 @@ decl_error! {
         ReachLoanCap,
         InvalidCollateralLoanAmounts,
         OverLTVLimit,
+        SavingIsZero,
     }
 }
 

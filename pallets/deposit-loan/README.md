@@ -86,4 +86,5 @@ Error::TotalCollateralUnderflow => 10,
 Error::ReachLoanCap => 11,
 Error::InvalidCollateralLoanAmounts => 12,
 Error::OverLTVLimit => 13,
+Error::SavingIsZero => 14,
 ```
