@@ -16,7 +16,7 @@ pub use deposit_loan_rpc_runtime_api::{self as runtime_api, DepositLoanApi as De
 
 // use ls_biding_primitives::{Borrow, Loan};
 
-use deposit_loan_primitives::{Loan};
+use deposit_loan_primitives::*;
 
 pub enum Error {
     RuntimeError,
@@ -43,14 +43,14 @@ impl From<Error> for String {
 }
 
 #[rpc]
-pub trait DepositLoanApi<BlockHash, AccountId, Balance> {
+pub trait DepositLoanApi<BlockHash, AccountId, LoanResult> {
     #[rpc(name = "depositLoan_loans")]
     fn loans(
         &self,
         size: Option<u64>,
         offset: Option<u64>,
         at: Option<BlockHash>,
-    ) -> Result<Vec<Loan<AccountId, Balance>>>;
+    ) -> Result<LoanResult>;
 }
 
 
@@ -68,7 +68,7 @@ impl<C, B> DepositLoan<C, B> {
 }
 
 impl<C, Block, AccountId, Balance>
-    DepositLoanApi<<Block as BlockT>::Hash, AccountId, Balance>
+    DepositLoanApi<<Block as BlockT>::Hash, AccountId, Vec<Loan<AccountId, Balance>>>
     for DepositLoan<C, Block>
 where
     Block: BlockT,

@@ -926,7 +926,7 @@ impl<T: Trait> Module<T> {
         collateral_asset_price: u64,
         liquidation: LTV,
     ) -> LoanHealth {
-        let current_ltv = <Loan<T::AccountId, T::Balance>>::get_ltv(
+        let current_ltv = Self::get_ltv(
             loan.collateral_balance_available,
             loan.loan_balance_total,
             collection_asset_price,
@@ -938,6 +938,20 @@ impl<T: Trait> Module<T> {
         }
 
         LoanHealth::Well
+    }
+
+    fn get_ltv(
+        collateral_amount: T::Balance,
+        loan_amount: T::Balance,
+        collection_price: u64,
+        collateral_price: u64,
+    ) -> LTV {
+        let collateral_price = <T::Balance as TryFrom<u128>>::try_from(collateral_price as u128)
+            .ok()
+            .unwrap();
+        let ltv = (loan_amount * T::Balance::from(collection_price as u32) * T::Balance::from(PRICE_PREC) * T::Balance::from(LTV_PREC))
+            / (collateral_amount * collateral_price);
+        TryInto::<LTV>::try_into(ltv).ok().unwrap()
     }
 
     fn liquidate_loan(loan_id: LoanId, liquidating_ltv: LTV) {
