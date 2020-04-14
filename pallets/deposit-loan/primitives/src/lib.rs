@@ -49,7 +49,6 @@ pub type LoanResult<T = ()> = result::Result<T, DispatchError>;
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub enum LoanHealth {
     Well,
-    Warning(LTV),
     Liquidating(LTV),
 }
 impl Default for LoanHealth {

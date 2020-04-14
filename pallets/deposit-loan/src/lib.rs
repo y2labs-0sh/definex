@@ -154,9 +154,6 @@ decl_storage! {
         /// when a loan's LTV reaches or is above this threshold, this loan must be been liquidating
         pub GlobalLiquidationThreshold get(global_liquidation_threshold) config() : LTV;
 
-        /// when a loan's LTV reaches or is above this threshold, a warning event will be fired and there should be a centralized system monitoring on this
-        pub GlobalWarningThreshold get(global_warning_threshold) config() : LTV;
-
         /// increase monotonically
         NextLoanId get(next_loan_id) config() : LoanId;
 
@@ -268,13 +265,6 @@ decl_module! {
         #[weight = SimpleDispatchInfo::FixedNormal(0)]
         pub fn set_global_liquidation_threshold(origin, threshold: LTV) -> LoanResult {
             ensure_root(origin)?;
-            GlobalWarningThreshold::put(threshold);
-            Ok(())
-        }
-
-        #[weight = SimpleDispatchInfo::FixedNormal(0)]
-        pub fn set_global_warning_threshold(origin, threshold: LTV) -> LoanResult {
-            ensure_root(origin)?;
             GlobalLiquidationThreshold::put(threshold);
             Ok(())
         }
@@ -379,7 +369,7 @@ decl_module! {
             Self::mark_loan_liquidated(&Self::get_loan_by_id(loan_id), liquidation_account, auction_balance)
         }
 
-        /// when user got a warning of high-risk LTV, user can lower the LTV by add more collateral
+        /// when user got a high-risk LTV, user can lower the LTV by add more collateral
         #[weight = SimpleDispatchInfo::FixedNormal(10)]
         pub fn add_collateral(origin, loan_id: LoanId, amount: T::Balance) -> DispatchResult {
             ensure!(!Self::paused(), Error::<T>::Paused);
@@ -935,7 +925,6 @@ impl<T: Trait> Module<T> {
         collection_asset_price: u64,
         collateral_asset_price: u64,
         liquidation: LTV,
-        warning: LTV,
     ) -> LoanHealth {
         let current_ltv = <Loan<T::AccountId, T::Balance>>::get_ltv(
             loan.collateral_balance_available,
@@ -946,10 +935,6 @@ impl<T: Trait> Module<T> {
 
         if current_ltv >= liquidation {
             return LoanHealth::Liquidating(current_ltv);
-        }
-
-        if current_ltv >= warning {
-            return LoanHealth::Warning(current_ltv);
         }
 
         LoanHealth::Well
@@ -1042,7 +1027,6 @@ impl<T: Trait> Module<T> {
     fn on_each_block(_height: T::BlockNumber) {
         let collateral_asset_id = Self::collateral_asset_id();
         let liquidation_thd = Self::global_liquidation_threshold();
-        let warning_thd = Self::global_warning_threshold();
         let collection_asset_id = Self::collection_asset_id();
 
         let price_pair = Self::fetch_trading_pair_prices(collection_asset_id, collateral_asset_id);
@@ -1067,15 +1051,8 @@ impl<T: Trait> Module<T> {
                 price_pair.borrow_asset_price,
                 price_pair.collateral_asset_price,
                 liquidation_thd,
-                warning_thd,
             ) {
                 LoanHealth::Well => {}
-                LoanHealth::Warning(ltv) => {
-                    if loan.status != LoanHealth::Warning(ltv) {
-                        <Loans<T>>::mutate(&loan.id, |v| v.status = LoanHealth::Warning(ltv));
-                        Self::deposit_event(RawEvent::Warning(loan_id, ltv));
-                    }
-                }
 
                 LoanHealth::Liquidating(l) => {
                     Self::liquidate_loan(loan_id, l);
@@ -1279,9 +1256,6 @@ decl_event!(
         LoanCreated(Loan),
         LoanDrawn(LoanId, Balance),
         LoanRepaid(LoanId, Balance, Balance),
-        // Expired(LoanId, AccountId, Balance, Balance),
-        // Extended(LoanId, AccountId),
-        Warning(LoanId, LTV),
         Paused(LineNumber, BlockNumber, ExtrinsicIndex),
 
         Liquidating(LoanId, AccountId, CollateralBalanceAvailable, TotalLoanBalance),

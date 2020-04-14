@@ -23,8 +23,6 @@ api.query.depositLoan.global_ltv_limit() : LTV
 
 api.query.depositLoan.global_liquidation_threshold() : LTV
 
-api.query.depositLoan.global_warning_threshold() : LTV
-
 api.query.depositLoan.get_loan_by_id(LoanId) : Loan
 
 api.query.depositLoan.loans_by_account(AccountId) : []Loan
