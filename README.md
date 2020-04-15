@@ -294,38 +294,36 @@ our web wallet.
       "type": "Vec<P2PLoanRPC>",
     }
   },
-  {
-    "depositLoan": {
-        "loans": {
-            "params": [
-                {
-                    "name": "size",
-                    "type": "Option<u64>"
-                },
-                {
-                    "name": "offset",
-                    "type": "Option<u64>"
-                }
-            ],
-            "type": "Vec<Loan>"
+  "depositLoan": {
+    "loans": {
+      "params": [
+        {
+            "name": "size",
+            "type": "Option<u64>"
         },
-        "userLoans": {
-            "params": [
-                {
-                    "name": "who",
-                    "type": "AccountId"
-                },
-                {
-                    "name": "size",
-                    "type": "Option<u64>"
-                },
-                {
-                    "name": "offset",
-                    "type": "Option<u64>"
-                }
-            ],
-            "type": "Vec<Loan>"
+        {
+            "name": "offset",
+            "type": "Option<u64>"
         }
+      ],
+      "type": "Vec<Loan>"
+    },
+    "userLoans": {
+      "params": [
+        {
+            "name": "who",
+            "type": "AccountId"
+        },
+        {
+            "name": "size",
+            "type": "Option<u64>"
+        },
+        {
+            "name": "offset",
+            "type": "Option<u64>"
+        }
+      ],
+      "type": "Vec<Loan>"
     }
   }
 }

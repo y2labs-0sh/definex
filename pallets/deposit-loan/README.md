@@ -81,6 +81,10 @@ api.query.depositLoan.liquidating_loans() : []Loan
 
 api.query.depositLoan.minimum_collateral() : T::Balance
 
+api.query.depositLoan.value_of_tokens() : T::Balance
+
+api.query.depositLoan.user_dtoken(AccountId) : T::Balance
+
 ## extrinsics
 
 **deposit some assets into module**
