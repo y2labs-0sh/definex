@@ -132,9 +132,6 @@ decl_storage! {
         /// Annualized interest rate of loan
         pub LoanInterestRateCurrent get(loan_interest_rate_current) config(): T::Balance;
 
-        /// use "ProfitAsset" for bonus
-        ProfitAssetId get(profit_asset_id) config() : T::AssetId;
-
         /// use a specific account as "ProfitPool"
         /// might be supervised by the public
         ProfitPool get(profit_pool) config() : T::AccountId;
@@ -144,9 +141,6 @@ decl_storage! {
 
         /// the asset that user uses as collateral when making loans
         CollateralAssetId get(collateral_asset_id) config() : T::AssetId;
-
-        /// the asset that defi
-        LoanAssetId get(loan_asset_id) config() : T::AssetId;
 
         /// the maximum LTV that a loan package can be set initially
         pub GlobalLTVLimit get(global_ltv_limit) config() : LTV;
@@ -175,12 +169,6 @@ decl_storage! {
         /// total balance of collateral asset locked in the pawnshop
         pub TotalCollateral get(total_collateral) : T::Balance;
 
-        /// when a loan is overdue, a small portion of its collateral will be cut as penalty
-        pub PenaltyRate get(penalty_rate) config() : u32;
-
-        /// the official account take charge of selling the collateral asset of liquidating loans
-        LiquidationAccount get(liquidation_account) config() : T::AccountId;
-
         /// loans which are in liquidating, these loans will not be in "Loans" & "LoansByAccount"
         pub LiquidatingLoans get(liquidating_loans) : Vec<LoanId>;
 
@@ -193,6 +181,8 @@ decl_storage! {
         pub LiquidationPenalty get(liquidation_penalty) config() : u32;
 
         pub SavingInterestRate get(saving_interest_rate) config() : T::Balance;
+
+        pub LiquidateDiscount get(liquidate_discount) config() : T::Balance;
     }
 
     add_extra_genesis {
@@ -256,13 +246,6 @@ decl_module! {
         }
 
         #[weight = SimpleDispatchInfo::FixedNormal(0)]
-        pub fn set_loan_asset_id(origin, asset_id: T::AssetId) -> LoanResult {
-            ensure_root(origin)?;
-            <LoanAssetId<T>>::put(asset_id);
-            Ok(())
-        }
-
-        #[weight = SimpleDispatchInfo::FixedNormal(0)]
         pub fn set_global_liquidation_threshold(origin, threshold: LTV) -> LoanResult {
             ensure_root(origin)?;
             GlobalLiquidationThreshold::put(threshold);
@@ -281,21 +264,6 @@ decl_module! {
         }
 
         #[weight = SimpleDispatchInfo::FixedNormal(0)]
-        pub fn set_liquidation_account(origin, account_id: T::AccountId) -> LoanResult {
-            ensure_root(origin)?;
-            <LiquidationAccount<T>>::put(account_id);
-            Ok(())
-        }
-
-        #[weight = SimpleDispatchInfo::FixedNormal(0)]
-        pub fn set_profit_asset_id(origin, asset_id: T::AssetId) -> DispatchResult {
-            ensure_root(origin)?;
-            ensure!(<generic_asset::Module<T>>::asset_id_exists(asset_id), "invalid collection asset id");
-            <ProfitAssetId<T>>::put(asset_id);
-            Ok(())
-        }
-
-        #[weight = SimpleDispatchInfo::FixedNormal(0)]
         pub fn set_profit_pool(origin, account_id: T::AccountId) -> DispatchResult {
             ensure_root(origin)?;
             <ProfitPool<T>>::put(account_id);
@@ -303,9 +271,9 @@ decl_module! {
         }
 
         #[weight = SimpleDispatchInfo::FixedNormal(0)]
-        pub fn set_penalty_rate(origin, rate: u32) -> LoanResult {
+        pub fn set_liquidation_penalty_rate(origin, rate: u32) -> LoanResult {
             ensure_root(origin)?;
-            PenaltyRate::put(rate);
+            LiquidationPenalty::put(rate);
             Ok(())
         }
 
@@ -360,13 +328,14 @@ decl_module! {
         /// loan id is the loan been handled and auction_balance is what the liquidation got by selling the collateral asset
         /// auction_balance will be first used to make up the loan, then what so ever left will be returned to the loan's owner account
         #[weight = SimpleDispatchInfo::FixedNormal(10)]
-        pub fn mark_liquidated(origin, loan_id: LoanId, auction_balance: T::Balance) -> DispatchResult {
+        // pub fn mark_liquidated(origin, loan_id: LoanId, auction_balance: T::Balance) -> DispatchResult {
+        pub fn mark_liquidated(origin, loan_id: LoanId) -> DispatchResult {
             ensure!(!Self::paused(), Error::<T>::Paused);
             let liquidation_account = ensure_signed(origin)?;
-            // ensure!(liquidation_account == Self::liquidation_account(), "liquidation account only");
             ensure!(<Loans<T>>::contains_key(loan_id), Error::<T>::UnknownLoanId);
-
-            Self::mark_loan_liquidated(&Self::get_loan_by_id(loan_id), liquidation_account, auction_balance)
+            let loan = Self::get_loan_by_id(loan_id);
+            ensure!(loan.who != liquidation_account, Error::<T>::CanNotLiquidateYourself);
+            Self::mark_loan_liquidated(&loan, liquidation_account)
         }
 
         /// when user got a high-risk LTV, user can lower the LTV by add more collateral
@@ -680,7 +649,7 @@ impl<T: Trait> Module<T> {
     }
 
     pub fn repay_for_loan(who: T::AccountId, loan_id: LoanId) -> DispatchResult {
-        let loan_asset_id = Self::loan_asset_id();
+        let loan_asset_id = Self::collection_asset_id();
         let collateral_asset_id = Self::collateral_asset_id();
         let collection_account_id = Self::collection_account_id();
         let pawn_shop = Self::pawn_shop();
@@ -784,82 +753,71 @@ impl<T: Trait> Module<T> {
     pub fn mark_loan_liquidated(
         loan: &Loan<T::AccountId, T::Balance>,
         liquidation_account: T::AccountId,
-        auction_balance: T::Balance,
     ) -> DispatchResult {
         let pawnshop = Self::pawn_shop();
         let collateral_asset_id = Self::collateral_asset_id();
+        let collection_asset_id = Self::collection_asset_id();
         let collection_account_id = Self::collection_account_id();
-        let loan_asset_id = Self::loan_asset_id();
+        let loan_asset_id = Self::collection_asset_id();
+        let profit_pool = Self::profit_pool();
 
         ensure!(
             Self::check_loan_in_liquidation(&loan.id),
             Error::<T>::LoanNotInLiquidation
         );
 
+        let trading_pair_prices =
+            Self::fetch_trading_pair_prices(collection_asset_id, collateral_asset_id)
+                .ok_or(Error::<T>::TradingPairPriceMissing)?;
+
+        let collateral_worth = loan.collateral_balance_original
+            * T::Balance::from(trading_pair_prices.collateral_asset_price as u32)
+            / T::Balance::from(trading_pair_prices.borrow_asset_price as u32);
+
+        // collateral_net_worth is the price that we sell to liquidator
+        let collateral_net_worth: T::Balance =
+            collateral_worth * Self::liquidate_discount().into() / 100u32.into();
+
         ensure!(
             <generic_asset::Module<T>>::free_balance(&loan_asset_id, &liquidation_account)
-                >= auction_balance,
+                >= collateral_net_worth,
             Error::<T>::NotEnoughBalance
         );
 
-        ensure!(
-            auction_balance >= loan.loan_balance_total,
-            Error::<T>::NotEnoughBalance
-        );
-
-        <generic_asset::Module<T>>::make_transfer_with_event(
-            &loan_asset_id,
-            &liquidation_account,
-            &collection_account_id,
-            loan.loan_balance_total,
-        )?;
-
-        let leftover = auction_balance.checked_sub(&loan.loan_balance_total);
-
-        if leftover.is_some() && leftover.unwrap() > T::Balance::zero() {
-            let penalty_rate = Self::liquidation_penalty();
-            let penalty = leftover.unwrap() * T::Balance::from(penalty_rate) / 100.into();
+        if collateral_net_worth >= loan.loan_balance_total {
 
             <generic_asset::Module<T>>::make_transfer_with_event(
                 &loan_asset_id,
+                &liquidation_account,
                 &collection_account_id,
-                &Self::profit_pool(), // TODO: can change to team account
-                penalty,
-            )
-            .or_else(|err| -> DispatchResult {
-                <generic_asset::Module<T>>::make_transfer_with_event(
-                    &loan_asset_id,
-                    &pawnshop,
-                    &liquidation_account,
-                    loan.loan_balance_total,
-                )?;
-                Err(err)
-            })?;
-            // part of the penalty will transfer to the loan owner
+                collateral_net_worth
+            )?;
+
             <generic_asset::Module<T>>::make_transfer_with_event(
-                &loan_asset_id,
+                &collateral_asset_id,
+                &pawnshop,
+                &liquidation_account,
+                loan.collateral_balance_original
+            )?;
+
+            let rest = collateral_net_worth - loan.loan_balance_total;
+            let penalty: T::Balance = rest * Self::liquidation_penalty().into() / 100u32.into();
+
+            <generic_asset::Module<T>>::make_transfer_with_event(
+                &collection_asset_id,
                 &collection_account_id,
                 &loan.who,
-                leftover.unwrap() - penalty,
-            )
-            .or_else(|err| -> DispatchResult {
-                <generic_asset::Module<T>>::make_transfer_with_event(
-                    &loan_asset_id,
-                    &Self::profit_pool(),
-                    &liquidation_account,
-                    penalty,
-                )?;
+                rest - penalty
+            )?;
 
-                // TODO: ensure pawnshop have enough collateral_asset
-                <generic_asset::Module<T>>::make_transfer_with_event(
-                    &collateral_asset_id,
-                    &pawnshop,
-                    &liquidation_account,
-                    loan.collateral_balance_original,
-                )?;
-                Err(err)
-            })?;
+            <generic_asset::Module<T>>::make_transfer_with_event(
+                &collection_asset_id,
+                &collection_account_id,
+                &profit_pool,
+                penalty
+            )?;
         }
+
         <Loans<T>>::remove(&loan.id);
 
         LoanIdWithAllLoans::mutate(|v| {
@@ -899,7 +857,7 @@ impl<T: Trait> Module<T> {
             loan.id,
             loan.collateral_balance_original,
             loan.collateral_balance_available,
-            auction_balance,
+            collateral_net_worth,
             loan.loan_balance_total,
         ));
 
@@ -1271,6 +1229,7 @@ decl_error! {
         InvalidCollateralLoanAmounts,
         OverLTVLimit,
         SavingIsZero,
+        CanNotLiquidateYourself,
     }
 }
 
