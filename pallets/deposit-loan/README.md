@@ -105,7 +105,7 @@ api.tx.depositLoan.repay_loan(loan_id: LoanId)
 
 **liquidate a loan specified with auction balance by loan_id**
 
-api.tx.depositLoan.mark_liquidated(loan_id: LoanId, auction_balance: T::Balance)
+api.tx.depositLoan.mark_liquidated(loan_id: LoanId)
 
 **add more collateral to an pre-existed loan**
 
