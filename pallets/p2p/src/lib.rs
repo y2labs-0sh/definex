@@ -99,7 +99,7 @@ decl_storage! {
         /// liquidation penalty, percentage
         pub LiquidationPenaly get(fn liquidation_penalty) config() : u32;
         /// liquidator's discount for buying the collateral asset, percentage
-        pub LiquidatorDisount get(fn liquidator_discount) config() : u32;
+        pub LiquidatorDiscount get(fn liquidator_discount) config() : u32;
         /// TradingPairs contains all supported trading pairs, oracle should provide price information for all trading pairs.
         pub TradingPairs get(trading_pairs) config() : Vec<TradingPair<T::AssetId>>;
         /// LTV must be greater than this value to create a new borrow
