@@ -10,8 +10,8 @@ sp_api::decl_runtime_apis! {
         Balance: Codec,
         AccountId: Codec,
     {
-        fn get_loans(size: Option<u64>, offset: Option<u64>) -> Option<Vec<Loan<AccountId, Balance>>>;
+        fn get_loans(size: Option<u64>, offset: Option<u64>) -> Vec<Loan<AccountId, Balance>>;
 
-        fn get_user_loans(who: AccountId, size: Option<u64>, offset: Option<u64>) -> Option<Vec<Loan<AccountId, Balance>>>;
+        fn get_user_loans(who: AccountId, size: Option<u64>, offset: Option<u64>) -> Vec<Loan<AccountId, Balance>>;
     }
 }
