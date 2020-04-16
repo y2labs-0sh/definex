@@ -77,6 +77,7 @@ pub const DAYS_PER_YEAR: u32 = 365;
 pub const INTEREST_RATE_PREC: u32 = 10000_0000;
 pub const LTV_PREC: u32 = 10000;
 pub const PRICE_PREC: u32 = 10000;
+pub const TOKEN_VALUE_PREC: u32 = 10000;
 
 pub type PriceInUSDT = u64;
 pub type LoanId = u64;
@@ -88,7 +89,7 @@ pub type LoanResult<T = ()> = result::Result<T, DispatchError>;
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub enum LoanHealth {
     Well,
-    Liquidating(LTV),
+    Liquidating,
 }
 impl Default for LoanHealth {
     fn default() -> Self {

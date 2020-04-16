@@ -103,16 +103,8 @@ where
                 data: Some(format!("{:?}", e).into()),
             })
             .unwrap();
-        match list {
-            None => {
-                return Err(RPCError {
-                    code: ErrorCode::ServerError(Error::NoBorrows.into()),
-                    message: Error::NoBorrows.into(),
-                    data: None,
-                });
-            }
-            Some(list) => Ok(list),
-        }
+
+            Ok(list)
     }
 
     fn user_loans(&self, who: AccountId, size: Option<u64>, offset: Option<u64>, at: Option<<Block as BlockT>::Hash>) -> Result<Vec<Loan<AccountId, Balance>>> {
@@ -127,16 +119,8 @@ where
                 data: Some(format!("{:?}", e).into()),
             })
             .unwrap();
-        match list {
-            None => {
-                return Err(RPCError {
-                    code: ErrorCode::ServerError(Error::NoBorrows.into()),
-                    message: Error::NoBorrows.into(),
-                    data: None,
-                });
-            }
-            Some(list) => Ok(list),
-        }
+
+        Ok(list)
     }
 
 }

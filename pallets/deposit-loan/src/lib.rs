@@ -87,6 +87,7 @@ use support::{
     ensure,
     weights::{SimpleDispatchInfo, WeighData, Weight},
     IterableStorageMap,
+    traits::Get,
 };
 
 #[allow(unused_imports)]
@@ -126,8 +127,8 @@ decl_storage! {
         // used to calculate interest rate, default accuracy 1_0000_0000
         pub ValueOfTokens get(value_of_tokens) config(): T::Balance;
 
-        /// time of last distribution of interest
-        BonusTime get(bonus_time) : T::Moment;
+        /// Blocknum of last distribution of interest
+        BonusBlock get(bonus_block) : T::BlockNumber;
 
         /// Annualized interest rate of loan
         pub LoanInterestRateCurrent get(loan_interest_rate_current) config(): T::Balance;
@@ -398,7 +399,7 @@ impl<T: Trait> Module<T> {
     pub fn get_loans(
         size: Option<u64>,
         offset: Option<u64>,
-    ) -> Option<Vec<Loan<T::AccountId, T::Balance>>> {
+    ) -> Vec<Loan<T::AccountId, T::Balance>> {
         let offset = offset.unwrap_or(0);
         let size = size.unwrap_or(10);
         let mut res = Vec::with_capacity(size as usize);
@@ -407,18 +408,14 @@ impl<T: Trait> Module<T> {
             res.push(l);
         }
 
-        if res.len() > 0 {
-            Some(res)
-        } else {
-            None
-        }
+        res
     }
 
     pub fn get_user_loans(
         who: T::AccountId,
         size: Option<u64>,
         offset: Option<u64>,
-    ) -> Option<Vec<Loan<T::AccountId, T::Balance>>> {
+    ) -> Vec<Loan<T::AccountId, T::Balance>> {
         let offset = offset.unwrap_or(0);
         let size = size.unwrap_or(0);
         let mut res = Vec::with_capacity(size as usize);
@@ -428,13 +425,8 @@ impl<T: Trait> Module<T> {
             res.push(<Loans<T>>::get(i))
         }
 
-        if res.len() > 0 {
-            Some(res)
-        } else {
-            None
-        }
+        res
     }
-
 
     pub fn create_staking(
         who: T::AccountId,
@@ -453,12 +445,7 @@ impl<T: Trait> Module<T> {
             amount,
         )?;
 
-        // TODO: front end have multipled 10^8 alreadly
-        let user_dtoken = <T::Balance as TryFrom<u128>>::try_from(10_u128.pow(8))
-            .ok()
-            .unwrap()
-            * amount
-            / value_of_tokens;
+        let user_dtoken = amount * T::Balance::from(TOKEN_VALUE_PREC) / value_of_tokens;
 
         // in case This user is the second deposit of the user
         if <UserDtoken<T>>::contains_key(who.clone()) {
@@ -483,18 +470,11 @@ impl<T: Trait> Module<T> {
 
         // let user_will_get = user_dtoken_amount / (market_dtoken_amount / total_dtoken_amount);
         let user_will_get = user_dtoken_amount * value_of_tokens
-            / <T::Balance as TryFrom<u128>>::try_from(10_u128.pow(8))
-                .ok()
-                .unwrap();
-
+            / T::Balance::from(TOKEN_VALUE_PREC);
         ensure!(user_will_get >= amount, Error::<T>::NotEnoughBalance);
 
         // money user will get / money user have == dtoken will cut / dtoken user have
-        let dtoken_will_cut = amount
-            * <T::Balance as TryFrom<u128>>::try_from(10_u128.pow(8))
-                .ok()
-                .unwrap()
-            / value_of_tokens;
+        let dtoken_will_cut = amount * T::Balance::from(TOKEN_VALUE_PREC) / value_of_tokens;
 
         // TODO: if user deposit all saving, can delete this saving.
 
@@ -956,7 +936,7 @@ impl<T: Trait> Module<T> {
         );
 
         if current_ltv >= liquidation {
-            return LoanHealth::Liquidating(current_ltv);
+            return LoanHealth::Liquidating;
         }
 
         LoanHealth::Well
@@ -976,9 +956,9 @@ impl<T: Trait> Module<T> {
         TryInto::<LTV>::try_into(ltv).ok().unwrap()
     }
 
-    fn liquidate_loan(loan_id: LoanId, liquidating_ltv: LTV) {
+    fn liquidate_loan(loan_id: LoanId) {
         <Loans<T>>::mutate(loan_id, |v| {
-            v.status = LoanHealth::Liquidating(liquidating_ltv)
+            v.status = LoanHealth::Liquidating;
         });
         if LiquidatingLoans::exists() {
             LiquidatingLoans::mutate(|v| v.push(loan_id));
@@ -1060,7 +1040,7 @@ impl<T: Trait> Module<T> {
         ));
     }
 
-    fn on_each_block(_height: T::BlockNumber) {
+    fn on_each_block(height: T::BlockNumber) {
         let collateral_asset_id = Self::collateral_asset_id();
         let liquidation_thd = Self::global_liquidation_threshold();
         let collection_asset_id = Self::collection_asset_id();
@@ -1090,8 +1070,8 @@ impl<T: Trait> Module<T> {
             ) {
                 LoanHealth::Well => {}
 
-                LoanHealth::Liquidating(l) => {
-                    Self::liquidate_loan(loan_id, l);
+                LoanHealth::Liquidating => {
+                    Self::liquidate_loan(loan_id);
                     Self::deposit_event(RawEvent::Liquidating(
                         loan_id,
                         loan.who.clone(),
@@ -1101,10 +1081,10 @@ impl<T: Trait> Module<T> {
                 }
             }
         }
-        Self::calculate_loan_interest_rate();
+        Self::calculate_loan_interest_rate(height);
     }
 
-    fn calculate_loan_interest_rate() {
+    fn calculate_loan_interest_rate(height: T::BlockNumber) {
         let collection_asset_id = Self::collection_asset_id();
         let collection_account_id = Self::collection_account_id();
         let total_loan = Self::total_loan();
@@ -1113,20 +1093,18 @@ impl<T: Trait> Module<T> {
             <generic_asset::Module<T>>::free_balance(&collection_asset_id, &collection_account_id)
                 + Self::total_loan();
 
-        let last_bonus_time: T::Moment = Self::bonus_time();
-        let current_time = <timestamp::Module<T>>::get();
-        <BonusTime<T>>::put(current_time);
+        let last_bonus_block: T::BlockNumber = Self::bonus_block();
+        let secs_per_block = <T as timestamp::Trait>::MinimumPeriod::get();
+
+        let secs_per_block = TryInto::<u32>::try_into(secs_per_block).ok().unwrap() * 2 / 1000;
+
+        <BonusBlock<T>>::put(height);
 
         // if !(total_deposit + total_loan).is_zero() {
         if total_deposit > T::Balance::from(0) && total_loan > T::Balance::from(0) {
             let current_loan_interest_rate = Self::current_loan_interest_rate();
-            let time_duration = TryInto::<u32>::try_into(current_time - last_bonus_time)
-                .ok()
-                .unwrap();
 
-            // after 1500s, ValueOfTokens will change.
-            // TODO: uncomment next line while doing testcase
-            // let time_duration = TryInto::<u32>::try_into(1500).ok().unwrap();
+            let time_duration = TryInto::<u32>::try_into(height - last_bonus_block).ok().unwrap()*secs_per_block;
 
             let interest_generated =
                 T::Balance::from(time_duration) * total_loan * current_loan_interest_rate

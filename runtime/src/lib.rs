@@ -948,10 +948,10 @@ impl_runtime_apis! {
     }
 
     impl deposit_loan_rpc_runtime_api::DepositLoanApi<Block, AccountId, Balance> for Runtime {
-        fn get_loans(size: Option<u64>, offset: Option<u64>) -> Option<Vec<deposit_loan_primitives::Loan<AccountId, Balance>>> {
+        fn get_loans(size: Option<u64>, offset: Option<u64>) -> Vec<deposit_loan_primitives::Loan<AccountId, Balance>> {
             DepositLoan::get_loans(size, offset)
         }
-        fn get_user_loans(who: AccountId, size: Option<u64>, offset: Option<u64>) -> Option<Vec<deposit_loan_primitives::Loan<AccountId, Balance>>> {
+        fn get_user_loans(who: AccountId, size: Option<u64>, offset: Option<u64>) -> Vec<deposit_loan_primitives::Loan<AccountId, Balance>> {
             DepositLoan::get_user_loans(who, size, offset)
         }
     }
