@@ -54,30 +54,30 @@ fn staking_redeem_works() {
     let dave: <Test as system::Trait>::AccountId = get_from_seed::<sr25519::Public>("Dave");
 
     ExtBuilder::default().build().execute_with(|| {
-        // mint 5000 unit usdt for dave;
+        // mint 5000_0000 unit usdt for dave;
         assert_ok!(GenericAssetTest::mint_free(
             &USDT,
             &root,
             &dave,
-            &<<Test as generic_asset::Trait>::Balance as TryFrom<u64>>::try_from(5000)
+            &<<Test as generic_asset::Trait>::Balance as TryFrom<u64>>::try_from(5000_0000)
                 .ok()
                 .unwrap(),
         ));
 
-        // dave will save 1000 unit usdt；
+        // dave will save 1000_0000 unit usdt；
         assert_ok!(DepositLoanTest::create_staking(
             dave.clone(),
             USDT.clone(),
-            <<Test as generic_asset::Trait>::Balance as TryFrom<u64>>::try_from(1000)
+            <<Test as generic_asset::Trait>::Balance as TryFrom<u64>>::try_from(1000_0000)
                 .ok()
                 .unwrap()
         ));
 
         // check status
-        assert_eq!(GenericAssetTest::free_balance(&USDT, &dave), 4000);
+        assert_eq!(GenericAssetTest::free_balance(&USDT, &dave), 4000_0000);
         assert_eq!(
             GenericAssetTest::free_balance(&USDT, &DepositLoanTest::collection_account_id()),
-            1000
+            1000_0000
         );
         assert_eq!(DepositLoanTest::user_dtoken(dave.clone()), 1000);
 
@@ -86,14 +86,14 @@ fn staking_redeem_works() {
             &dave,
             &USDT,
             &DepositLoanTest::collection_account_id(),
-            500
+            500_0000
         ));
 
         // check status
-        assert_eq!(GenericAssetTest::free_balance(&USDT, &dave), 4500);
+        assert_eq!(GenericAssetTest::free_balance(&USDT, &dave), 4500_0000);
         assert_eq!(
             GenericAssetTest::free_balance(&USDT, &DepositLoanTest::collection_account_id()),
-            500
+            500_0000
         );
         assert_eq!(DepositLoanTest::user_dtoken(dave.clone()), 500);
 
@@ -102,7 +102,7 @@ fn staking_redeem_works() {
             &USDT,
             &root,
             &eve,
-            &<<Test as generic_asset::Trait>::Balance as TryFrom<u64>>::try_from(5000)
+            &<<Test as generic_asset::Trait>::Balance as TryFrom<u64>>::try_from(5000_0000)
                 .ok()
                 .unwrap(),
         ));
@@ -110,16 +110,16 @@ fn staking_redeem_works() {
         assert_ok!(DepositLoanTest::create_staking(
             eve.clone(),
             USDT.clone(),
-            <<Test as generic_asset::Trait>::Balance as TryFrom<u64>>::try_from(400)
+            <<Test as generic_asset::Trait>::Balance as TryFrom<u64>>::try_from(400_0000)
                 .ok()
                 .unwrap()
         ));
 
         // check status
-        assert_eq!(GenericAssetTest::free_balance(&USDT, &eve), 4600);
+        assert_eq!(GenericAssetTest::free_balance(&USDT, &eve), 4600_0000);
         assert_eq!(
             GenericAssetTest::free_balance(&USDT, &DepositLoanTest::collection_account_id()),
-            900
+            900_0000
         );
         assert_eq!(DepositLoanTest::user_dtoken(eve.clone()), 400);
 
@@ -127,7 +127,7 @@ fn staking_redeem_works() {
             &eve,
             &USDT,
             &DepositLoanTest::collection_account_id(),
-            400
+            400_0000
         ));
     });
 }
@@ -344,7 +344,7 @@ fn deliver_interest_works() {
         ));
 
         assert_eq!(DepositLoanTest::total_loan(), 40_0000_0000);
-        assert_eq!(DepositLoanTest::user_dtoken(dave.clone()), 100_0000_0000);
+        assert_eq!(DepositLoanTest::user_dtoken(dave.clone()), 100_0000);
 
         // current_total_loan = 40_0000_0000 ; current_total_saving = 100_0000_0000;
         // so current Utilization rate = 40_0000_0000 / (40_0000_0000 + 100_0000_0000) = 0.2857142857142857 ;

@@ -131,9 +131,8 @@ This is just for frontend developer
     "PriceInUSDT": "u64",
     "LoanHealth": {
         "_enum": {
-            "Well": null,
-            "Warning": "LTV",
-            "Liquidating": "LTV"
+            "Well",
+            "Liquidating"
         }
     },
     "LoanPackageStatus": {
