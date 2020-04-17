@@ -1,5 +1,21 @@
 This project is meant for our Web3 grant application.
 
+## How to 
+1. Run a local test node:
+- `git clone https://github.com/y2labs-0sh/definex.git && cd definex`
+- `cargo build -p node-cli --release` 
+- `./target/release/substrate purge-chain --dev`
+- `./target/release/substrate --dev` (since We are expecting to follow substrate's development releases, we are just leaving the binary name unchanged.)
+
+2. Run a local web wallet:
+- `git clone https://github.com/y2labs-0sh/definex-wallet.git && cd definex-wallet`
+- `yarn install`
+- `yarn run start` this will automatically open localhost:8000 in your browser trying to connecting 'ws://localhost:9944'
+
+3. Connect https://polkadot.js.org/apps/ to your local node
+4. Use Alice to mint some DUSD and BTC to some accounts in the genericAsset as a faucet
+5. Then you can do 'borrow&lend' in pallets/p2p and 'saving&loan' in pallets/deposit-loan
+
 ## P2P module is at pallets/p2p
 
 In this DeFi pallet, there are 3 major roles:
