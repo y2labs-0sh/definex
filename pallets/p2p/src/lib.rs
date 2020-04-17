@@ -767,8 +767,8 @@ impl<T: Trait> Module<T> {
                     borrower_id: borrow.who.clone(),
                     loaner_id: loaner.clone(),
                     due: current_block_number
-                        + // T::Days::get()
-                             <T::BlockNumber as TryFrom<u64>>::try_from(borrow.terms)
+                        + T::Days::get()
+                            * <T::BlockNumber as TryFrom<u64>>::try_from(borrow.terms)
                                 .ok()
                                 .unwrap(),
                     collateral_asset_id: borrow.collateral_asset_id,
