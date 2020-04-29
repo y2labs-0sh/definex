@@ -34,5 +34,5 @@ std =[
 	"frame-system/std",
   "sp-core/std",
   "sudo/std",
-"sp-io/std"
+  "sp-io/std"
 ]

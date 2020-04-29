@@ -24,10 +24,7 @@ use balances;
 use sp_core::H256;
 pub use sp_core::{sr25519, Pair, Public};
 use std::cell::RefCell;
-use support::{
-    impl_outer_event, impl_outer_origin, parameter_types,
-    weights::Weight,
-};
+use support::{impl_outer_event, impl_outer_origin, parameter_types, weights::Weight};
 
 #[allow(unused_imports)]
 pub use sp_runtime::{
@@ -37,7 +34,6 @@ pub use sp_runtime::{
     },
     MultiSignature, Perbill, RuntimeAppPublic,
 };
-
 
 thread_local! {
     pub(crate) static EXISTENTIAL_DEPOSIT: RefCell<u128> = RefCell::new(0);
@@ -139,7 +135,6 @@ impl new_oracle::Trait for Test {
     type PriceInUSDT = u64;
 }
 
-
 mod deposit_loan {
     pub use super::super::*;
 }
@@ -158,7 +153,6 @@ impl_outer_event! {
         deposit_loan<T>,
     }
 }
-
 
 type Balances = balances::Module<Test>;
 type System = system::Module<Test>;
@@ -223,9 +217,6 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
 
     generic_asset::GenesisConfig::<Test> {
         next_asset_id: 2,
-        assets: vec![],
-        initial_balance: 0,
-        endowed_accounts: vec![],
         symbols: vec![
             (0, "DUSD".as_bytes().to_vec()),
             (1, "BTC".as_bytes().to_vec()),
@@ -245,9 +236,7 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
         liquidate_discount: 95,
         minimum_collateral: 0,
         liquidation_penalty: 50,
-        collection_account_id: get_from_seed::<sr25519::Public>(
-            "collection_account_id",
-        ),
+        collection_account_id: get_from_seed::<sr25519::Public>("collection_account_id"),
         pawn_shop: get_from_seed::<sr25519::Public>("pawn_shop"),
         profit_pool: get_from_seed::<sr25519::Public>("profit_pool"),
         value_of_tokens: 1_0000_0000,

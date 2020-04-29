@@ -114,56 +114,18 @@ decl_module! {
 
         pub fn stack_price_unsigned(origin, block_number: T::BlockNumber, token: StrBytes, price: T::PriceInUSDT) -> DispatchResult {
             ensure_none(origin)?;
-
             Self::stack_price(block_number, token, price)?;
-
             Ok(())
         }
 
         pub fn stack_price_signed(origin, block_number: T::BlockNumber, token: StrBytes, price: T::PriceInUSDT) -> DispatchResult {
             let who = ensure_signed(origin)?;
-
             // Self::stack_price(block_number, token, price);
-
             Ok(())
         }
 
         fn offchain_worker(block_number: T::BlockNumber) {
-            use system::offchain::SubmitUnsignedTransaction;
-            debug::native::info!("Hello World from offchain workers!");
-
-            let rand_s = sp_io::offchain::random_seed();
-            let r = u64::from_ne_bytes(sp_io::hashing::twox_64(&rand_s));
-            debug::info!("{}", r);
-
-            let token = b"BTC".to_vec();
-            let sources = CryptoPriceSources::get(&token);
-            let source = &sources[r as usize % sources.len()];
-
-            match Self::fetch_json(&source.1) {
-                Err(e) => {
-                    debug::error!("Fail to fetch price: {}", e);
-                }
-                Ok(json_data) => {
-                    let price_r = Self::parse_price(json_data, &source.2);
-                    match price_r {
-                        Ok(price) => {
-                            let call = Call::stack_price_unsigned(block_number, token, price);
-                            match T::SubmitUnsignedTransaction::submit_unsigned(call) {
-                                Err(e) => {
-                                    debug::error!("Fail to submit unsigned transaction for price: {:?}", e);
-                                }
-                                Ok(_) => {
-                                    return ();
-                                }
-                            }
-                        }
-                        Err(e) => {
-                            debug::error!("Fail to parse price: {}", e);
-                        }
-                    }
-                }
-            }
+            Self::fetch_price_and_submit_unsigned(block_number);
         }
     }
 }
@@ -171,6 +133,44 @@ decl_module! {
 impl<T: Trait> Module<T> {
     pub fn is_token_known(token: &StrBytes) -> bool {
         <CurrentPrice<T>>::contains_key(token)
+    }
+
+    fn fetch_price_and_submit_unsigned(block_number: T::BlockNumber) {
+        use system::offchain::SubmitUnsignedTransaction;
+
+        let rand_s = sp_io::offchain::random_seed();
+        let r = u64::from_ne_bytes(sp_io::hashing::twox_64(&rand_s));
+        let token = b"BTC".to_vec();
+        let sources = CryptoPriceSources::get(&token);
+        let source = &sources[r as usize % sources.len()];
+
+        match Self::fetch_json(&source.1) {
+            Err(e) => {
+                debug::error!("Fail to fetch price: {}", e);
+            }
+            Ok(json_data) => {
+                let price_r = Self::parse_price(json_data, &source.2);
+                match price_r {
+                    Ok(price) => {
+                        let call = Call::stack_price_unsigned(block_number, token, price);
+                        match T::SubmitUnsignedTransaction::submit_unsigned(call) {
+                            Err(e) => {
+                                debug::error!(
+                                    "Fail to submit unsigned transaction for price: {:?}",
+                                    e
+                                );
+                            }
+                            Ok(_) => {
+                                return ();
+                            }
+                        }
+                    }
+                    Err(e) => {
+                        debug::error!("Fail to parse price: {}", e);
+                    }
+                }
+            }
+        }
     }
 
     fn stack_price(
@@ -245,6 +245,7 @@ impl<T: Trait> Module<T> {
     }
 
     /// parse_field can only parse number & &[u8]
+    /// float point will be round up
     fn parse_field(json_data: &JsonValue) -> Result<u64, &'static str> {
         if let Some(p_f64) = json_data.get_number_f64() {
             return Ok(((p_f64 * PRICE_SCALE as f64).round() as u64)

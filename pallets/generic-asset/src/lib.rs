@@ -299,10 +299,7 @@ pub struct BalanceLock<Balance, AssetId> {
 decl_storage! {
     trait Store for Module<T: Trait> as GenericAsset {
         /// Total issuance of a given asset.
-        pub TotalIssuance get(fn total_issuance) build(|config: &GenesisConfig<T>| {
-            let issuance = config.initial_balance * (config.endowed_accounts.len() as u32).into();
-            config.assets.iter().map(|id| (id.clone(), issuance)).collect::<Vec<_>>()
-        }): map hasher(opaque_blake2_256) T::AssetId => T::Balance;
+        pub TotalIssuance get(fn total_issuance) : map hasher(opaque_blake2_256) T::AssetId => T::Balance;
 
         /// The free balance of a given asset under an account.
         pub FreeBalance:
@@ -329,17 +326,7 @@ decl_storage! {
     }
 
     add_extra_genesis {
-        config(assets): Vec<T::AssetId>;
-        config(initial_balance): T::Balance;
-        config(endowed_accounts): Vec<T::AccountId>;
-
         build(|config: &GenesisConfig<T>| {
-            config.assets.iter().for_each(|asset_id| {
-                config.endowed_accounts.iter().for_each(|account_id| {
-                    <FreeBalance<T>>::insert(asset_id, account_id, &config.initial_balance);
-                });
-            });
-
             let root_id = <sudo::Module<T>>::key();
             let options = AssetOptions {
                 initial_issuance: T::Balance::from(0),

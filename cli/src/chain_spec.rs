@@ -362,9 +362,6 @@ pub fn testnet_genesis(
         pallet_vesting: Some(Default::default()),
         generic_asset: Some(GenericAssetConfig {
             next_asset_id: 2,
-            assets: vec![],
-            initial_balance: 0,
-            endowed_accounts: vec![],
             symbols: vec![
                 (0, "DUSD".as_bytes().to_vec()),
                 (1, "BTC".as_bytes().to_vec()),

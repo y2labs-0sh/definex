@@ -255,9 +255,6 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
 
     generic_asset::GenesisConfig::<Test> {
         next_asset_id: 2,
-        assets: vec![],
-        initial_balance: 0,
-        endowed_accounts: vec![],
         symbols: vec![
             (0, "DUSD".as_bytes().to_vec()),
             (1, "BTC".as_bytes().to_vec()),

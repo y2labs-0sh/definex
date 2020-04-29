@@ -15,7 +15,9 @@
 
 #![cfg(test)]
 
-use frame_support::{impl_outer_event, impl_outer_origin, parameter_types, weights::Weight};
+use frame_support::{
+    impl_outer_dispatch, impl_outer_event, impl_outer_origin, parameter_types, weights::Weight,
+};
 use sp_core::H256;
 use sp_runtime::{
     testing::Header,
@@ -27,6 +29,12 @@ use super::*;
 
 impl_outer_origin! {
     pub enum Origin for Test where system = frame_system {}
+}
+impl_outer_dispatch! {
+    pub enum Call for Test where origin: Origin {
+        system::System,
+        sudo::Sudo,
+    }
 }
 
 // For testing the pallet, we construct most of a mock runtime. This means
@@ -61,7 +69,10 @@ impl frame_system::Trait for Test {
     type OnNewAccount = ();
     type OnKilledAccount = ();
 }
-
+impl sudo::Trait for Test {
+    type Event = TestEvent;
+    type Call = Call;
+}
 impl Trait for Test {
     type Balance = u64;
     type AssetId = u32;
@@ -76,39 +87,37 @@ use frame_system as system;
 impl_outer_event! {
     pub enum TestEvent for Test {
         system<T>,
+        sudo<T>,
         generic_asset<T>,
     }
 }
 
 pub type GenericAsset = Module<Test>;
-
+pub type Sudo = sudo::Module<Test>;
 pub type System = frame_system::Module<Test>;
 
+pub const root: u64 = 999;
+pub const next_asset_id: u32 = 2;
+
 pub struct ExtBuilder {
-    asset_id: u32,
     next_asset_id: u32,
-    accounts: Vec<u64>,
-    initial_balance: u64,
+    symbols: Vec<(u32, Vec<u8>)>,
 }
 
 // Returns default values for genesis config
 impl Default for ExtBuilder {
     fn default() -> Self {
         Self {
-            asset_id: 0,
-            next_asset_id: 1000,
-            accounts: vec![0],
-            initial_balance: 0,
+            next_asset_id,
+            symbols: vec![],
         }
     }
 }
 
 impl ExtBuilder {
     // Sets free balance to genesis config
-    pub fn free_balance(mut self, free_balance: (u32, u64, u64)) -> Self {
-        self.asset_id = free_balance.0;
-        self.accounts = vec![free_balance.1];
-        self.initial_balance = free_balance.2;
+    pub fn symbols(mut self, symbols: Vec<(u32, Vec<u8>)>) -> Self {
+        self.symbols = symbols;
         self
     }
 
@@ -123,13 +132,13 @@ impl ExtBuilder {
             .build_storage::<Test>()
             .unwrap();
 
+        sudo::GenesisConfig::<Test> { key: root }
+            .assimilate_storage(&mut t)
+            .unwrap();
+
         GenesisConfig::<Test> {
-            assets: vec![self.asset_id],
-            endowed_accounts: self.accounts,
-            initial_balance: self.initial_balance,
             next_asset_id: self.next_asset_id,
-            staking_asset_id: 16000,
-            spending_asset_id: 16001,
+            symbols: self.symbols,
         }
         .assimilate_storage(&mut t)
         .unwrap();

@@ -146,10 +146,7 @@ This is just for frontend developer
     },
     "PriceInUSDT": "u64",
     "LoanHealth": {
-        "_enum": {
-            "Well",
-            "Liquidating"
-        }
+        "_enum": ["Well", "Liquidating"]
     },
     "LoanPackageStatus": {
         "_enum": [
