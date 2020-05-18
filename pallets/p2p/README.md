@@ -16,13 +16,13 @@ api.rpc.pToP.borrows(size: Optional, offset: Optional) : []P2PBorrow
 
 api.rpc.pToP.userBorrows(who: AccountId, size: Optional, offset: Optional) : []P2PBorrow
 
-api.rpc.pToP.aliveBorrows(size: Optional, offset: Optional) : []P2PBorrow
+api.rpc.pToP.availableBorrows(size: Optional, offset: Optional) : []P2PBorrow
 
 api.rpc.pToP.loans(size: Optional, offset: Optional) : []P2PLoanRPC
 
 api.rpc.pToP.userLoans(who: AccountId, size: Optional, offset: Optional) : []P2PLoanRPC
 
-api.rpc.pToP.aliveLoans(size: Optional, offset: Optional) : []P2PLoanRPC
+api.rpc.pToP.availableLoans(size: Optional, offset: Optional) : []P2PLoanRPC
 
 ```json
 {
@@ -57,7 +57,7 @@ api.rpc.pToP.aliveLoans(size: Optional, offset: Optional) : []P2PLoanRPC
       ],
       "type": "Vec<P2PBorrow>",
     },
-    "aliveBorrows": {
+    "availableBorrows": {
       "params": [
         {
           "name": "size",
@@ -100,7 +100,7 @@ api.rpc.pToP.aliveLoans(size: Optional, offset: Optional) : []P2PLoanRPC
       ],
       "type": "Vec<P2PLoanRPC>",
     },
-    "aliveLoans": {
+    "availableLoans": {
       "params": [
         {
           "name": "size",
@@ -135,13 +135,13 @@ api.query.pToP.borrows(BorrowId) : P2PBorrow
 
 api.query.pToP.borrow_ids_by_account_id(AccountId) : []P2PBorrowId
 
-api.query.pToP.alive_borrow_ids() : []P2PBorrowId
+api.query.pToP.available_borrow_ids() : []P2PBorrowId
 
 api.query.pToP.loans(P2PLoanId) : P2PLoan
 
 api.query.pToP.loan_ids_by_account_id(AccountId) : []P2PLoanId
 
-api.query.pToP.alive_loan_ids_by_account_id(AccountId) : []P2PLoanId
+api.query.pToP.available_loan_ids_by_account_id(AccountId) : []P2PLoanId
 
 api.query.pToP.account_ids_with_loans() : []AccountId
 
@@ -252,7 +252,7 @@ api.tx.pToP.repay(borrow_id:P2PBorrowId)
     "_enum": ["JustCollateral", "SellCollateral"]
   },
   "P2PBorrowStatus": {
-    "_enum": ["Alive", "Taken", "Canceled", "Completed", "Dead", "Liquidated"]
+    "_enum": ["Available", "Taken", "Canceled", "Completed", "Dead", "Liquidated"]
   },
   "TradingPair": {
     "collateral": "u32",
@@ -302,8 +302,8 @@ api.tx.pToP.repay(borrow_id:P2PBorrowId)
     Error::MinBorrowTerms => 1,
     Error::MinBorrowInterestRate => 2,
     Error::CanNotReserve => 3,
-    Error::MultipleAliveBorrows => 4,
-    Error::BorrowNotAlive => 5,
+    Error::MultipleAvailableBorrows => 4,
+    Error::BorrowNotAvailable => 5,
     Error::TradingPairNotAllowed => 6,
     Error::NotOwnerOfBorrow => 7,
     Error::UnknownBorrowId => 8,

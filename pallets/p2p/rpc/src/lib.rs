@@ -63,8 +63,8 @@ pub trait P2PApi<BlockHash, AccountId, Moment, BorrowsResult, LoansResult> {
         at: Option<BlockHash>,
     ) -> Result<BorrowsResult>;
 
-    #[rpc(name = "pToP_aliveBorrows")]
-    fn alive_borrows(
+    #[rpc(name = "pToP_availableBorrows")]
+    fn available_borrows(
         &self,
         size: Option<u64>,
         offset: Option<u64>,
@@ -88,8 +88,8 @@ pub trait P2PApi<BlockHash, AccountId, Moment, BorrowsResult, LoansResult> {
         at: Option<BlockHash>,
     ) -> Result<LoansResult>;
 
-    #[rpc(name = "pToP_aliveLoans")]
-    fn alive_loans(
+    #[rpc(name = "pToP_availableLoans")]
+    fn available_loans(
         &self,
         size: Option<u64>,
         offset: Option<u64>,
@@ -166,7 +166,7 @@ where
         Ok(list)
     }
 
-    fn alive_borrows(
+    fn available_borrows(
         &self,
         size: Option<u64>,
         offset: Option<u64>,
@@ -175,7 +175,7 @@ where
         let api = self.client.runtime_api();
         let at = BlockId::hash(at.unwrap_or_else(|| self.client.info().best_hash));
         let list = api
-            .get_alive_borrows(&at, size, offset)
+            .get_available_borrows(&at, size, offset)
             .map_err(|e| RPCError {
                 code: ErrorCode::ServerError(Error::RuntimeError.into()),
                 message: Error::RuntimeError.into(),
@@ -226,7 +226,7 @@ where
         self.p2p_loan_2_rpc_loan::<AssetId, Balance, BlockNumber, AccountId, Moment>(api, at, list)
     }
 
-    fn alive_loans(
+    fn available_loans(
         &self,
         size: Option<u64>,
         offset: Option<u64>,
@@ -235,7 +235,7 @@ where
         let api = self.client.runtime_api();
         let at = BlockId::hash(at.unwrap_or_else(|| self.client.info().best_hash));
         let list = api
-            .get_alive_loans(&at, size, offset)
+            .get_available_loans(&at, size, offset)
             .map_err(|e| RPCError {
                 code: ErrorCode::ServerError(Error::RuntimeError.into()),
                 message: Error::RuntimeError.into(),

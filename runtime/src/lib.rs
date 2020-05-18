@@ -689,45 +689,45 @@ impl new_oracle::Trait for Runtime {
 }
 
 construct_runtime!(
-	pub enum Runtime where
-		Block = Block,
-		NodeBlock = node_primitives::Block,
-		UncheckedExtrinsic = UncheckedExtrinsic
-	{
-		System: frame_system::{Module, Call, Config, Storage, Event<T>},
-		Utility: pallet_utility::{Module, Call, Storage, Event<T>},
-		Babe: pallet_babe::{Module, Call, Storage, Config, Inherent(Timestamp)},
-		Timestamp: pallet_timestamp::{Module, Call, Storage, Inherent},
-		Authorship: pallet_authorship::{Module, Call, Storage, Inherent},
-		Indices: pallet_indices::{Module, Call, Storage, Config<T>, Event<T>},
-		Balances: pallet_balances::{Module, Call, Storage, Config<T>, Event<T>},
-		TransactionPayment: pallet_transaction_payment::{Module, Storage},
-		Staking: pallet_staking::{Module, Call, Config<T>, Storage, Event<T>},
-		Session: pallet_session::{Module, Call, Storage, Event, Config<T>},
-		Democracy: pallet_democracy::{Module, Call, Storage, Config, Event<T>},
-		Council: pallet_collective::<Instance1>::{Module, Call, Storage, Origin<T>, Event<T>, Config<T>},
-		TechnicalCommittee: pallet_collective::<Instance2>::{Module, Call, Storage, Origin<T>, Event<T>, Config<T>},
-		Elections: pallet_elections_phragmen::{Module, Call, Storage, Event<T>},
-		TechnicalMembership: pallet_membership::<Instance1>::{Module, Call, Storage, Event<T>, Config<T>},
-		FinalityTracker: pallet_finality_tracker::{Module, Call, Inherent},
-		Grandpa: pallet_grandpa::{Module, Call, Storage, Config, Event},
-		Treasury: pallet_treasury::{Module, Call, Storage, Config, Event<T>},
-		Contracts: pallet_contracts::{Module, Call, Config<T>, Storage, Event<T>},
-		Sudo: pallet_sudo::{Module, Call, Config<T>, Storage, Event<T>},
-		ImOnline: pallet_im_online::{Module, Call, Storage, Event<T>, ValidateUnsigned, Config<T>},
-		AuthorityDiscovery: pallet_authority_discovery::{Module, Call, Config},
-		Offences: pallet_offences::{Module, Call, Storage, Event},
-		RandomnessCollectiveFlip: pallet_randomness_collective_flip::{Module, Call, Storage},
-		Identity: pallet_identity::{Module, Call, Storage, Event<T>},
-		Society: pallet_society::{Module, Call, Storage, Event<T>, Config<T>},
-		Recovery: pallet_recovery::{Module, Call, Storage, Event<T>},
-		Vesting: pallet_vesting::{Module, Call, Storage, Event<T>, Config<T>},
+    pub enum Runtime where
+        Block = Block,
+        NodeBlock = node_primitives::Block,
+        UncheckedExtrinsic = UncheckedExtrinsic
+    {
+        System: frame_system::{Module, Call, Config, Storage, Event<T>},
+        Utility: pallet_utility::{Module, Call, Storage, Event<T>},
+        Babe: pallet_babe::{Module, Call, Storage, Config, Inherent(Timestamp)},
+        Timestamp: pallet_timestamp::{Module, Call, Storage, Inherent},
+        Authorship: pallet_authorship::{Module, Call, Storage, Inherent},
+        Indices: pallet_indices::{Module, Call, Storage, Config<T>, Event<T>},
+        Balances: pallet_balances::{Module, Call, Storage, Config<T>, Event<T>},
+        TransactionPayment: pallet_transaction_payment::{Module, Storage},
+        Staking: pallet_staking::{Module, Call, Config<T>, Storage, Event<T>},
+        Session: pallet_session::{Module, Call, Storage, Event, Config<T>},
+        Democracy: pallet_democracy::{Module, Call, Storage, Config, Event<T>},
+        Council: pallet_collective::<Instance1>::{Module, Call, Storage, Origin<T>, Event<T>, Config<T>},
+        TechnicalCommittee: pallet_collective::<Instance2>::{Module, Call, Storage, Origin<T>, Event<T>, Config<T>},
+        Elections: pallet_elections_phragmen::{Module, Call, Storage, Event<T>},
+        TechnicalMembership: pallet_membership::<Instance1>::{Module, Call, Storage, Event<T>, Config<T>},
+        FinalityTracker: pallet_finality_tracker::{Module, Call, Inherent},
+        Grandpa: pallet_grandpa::{Module, Call, Storage, Config, Event},
+        Treasury: pallet_treasury::{Module, Call, Storage, Config, Event<T>},
+        Contracts: pallet_contracts::{Module, Call, Config<T>, Storage, Event<T>},
+        Sudo: pallet_sudo::{Module, Call, Config<T>, Storage, Event<T>},
+        ImOnline: pallet_im_online::{Module, Call, Storage, Event<T>, ValidateUnsigned, Config<T>},
+        AuthorityDiscovery: pallet_authority_discovery::{Module, Call, Config},
+        Offences: pallet_offences::{Module, Call, Storage, Event},
+        RandomnessCollectiveFlip: pallet_randomness_collective_flip::{Module, Call, Storage},
+        Identity: pallet_identity::{Module, Call, Storage, Event<T>},
+        Society: pallet_society::{Module, Call, Storage, Event<T>, Config<T>},
+        Recovery: pallet_recovery::{Module, Call, Storage, Event<T>},
+        Vesting: pallet_vesting::{Module, Call, Storage, Event<T>, Config<T>},
         GenericAsset: generic_asset::{Module, Call, Storage, Event<T>, Config<T>},
         PToP: p2p::{Module, Call, Storage, Event<T>, Config<T>},
         Bridge: bridge::{Module, Call, Storage, Event<T>, Config<T>},
         NewOracle: new_oracle::{Module, Call, Storage, Config<T>, Event<T>, ValidateUnsigned},
-		DepositLoan: deposit_loan::{Module, Call, Storage, Event<T>, Config<T>},
-	}
+        DepositLoan: deposit_loan::{Module, Call, Storage, Event<T>, Config<T>},
+    }
 );
 
 /// The address format for describing accounts.
@@ -930,12 +930,12 @@ impl_runtime_apis! {
             PToP::get_user_borrows(who, size, offset)
         }
 
-        fn get_alive_borrows(size: Option<u64>, offset: Option<u64>) -> Vec<p2p_primitives::P2PBorrow<AssetId, Balance, BlockNumber, AccountId>> {
-            PToP::get_alive_borrows(size, offset)
+        fn get_available_borrows(size: Option<u64>, offset: Option<u64>) -> Vec<p2p_primitives::P2PBorrow<AssetId, Balance, BlockNumber, AccountId>> {
+            PToP::get_available_borrows(size, offset)
         }
 
-        fn get_alive_loans(size: Option<u64>, offset: Option<u64>) -> Vec<p2p_primitives::P2PLoan<AssetId, Balance, BlockNumber, AccountId>> {
-            PToP::get_alive_loans(size, offset)
+        fn get_available_loans(size: Option<u64>, offset: Option<u64>) -> Vec<p2p_primitives::P2PLoan<AssetId, Balance, BlockNumber, AccountId>> {
+            PToP::get_available_loans(size, offset)
         }
 
         fn get_user_loans(who: AccountId, size: Option<u64>, offset: Option<u64>) -> Vec<p2p_primitives::P2PLoan<AssetId, Balance, BlockNumber, AccountId>> {

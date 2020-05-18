@@ -115,15 +115,15 @@ decl_storage! {
         /// loan id counter
         pub NextLoanId get(next_loan_id) : P2PLoanId = 1;
 
-        /// an account can only have one alive borrow at a time
+        /// an account can only have one available borrow at a time
         pub Borrows get(borrows) : map hasher(twox_64_concat) P2PBorrowId => P2PBorrow<T::AssetId, T::Balance, T::BlockNumber, T::AccountId>;
         pub BorrowIdsByAccountId get(borrow_ids_by_account_id) : map hasher(opaque_blake2_256) T::AccountId => Vec<P2PBorrowId>;
-        pub AliveBorrowIds get(alive_borrow_ids) : Vec<P2PBorrowId>;
+        pub AvailableBorrowIds get(available_borrow_ids) : Vec<P2PBorrowId>;
 
-        /// on the other hand, an account can have multiple alive loans
+        /// on the other hand, an account can have multiple available loans
         pub Loans get(loans) : map hasher(twox_64_concat) P2PLoanId => P2PLoan<T::AssetId, T::Balance, T::BlockNumber, T::AccountId>;
         pub LoanIdsByAccountId get(loan_ids_by_account_id) : map hasher(opaque_blake2_256) T::AccountId => Vec<P2PLoanId>;
-        pub AliveLoanIdsByAccountId get(alive_loan_ids_by_account_id) : map hasher(opaque_blake2_256) T::AccountId => Vec<P2PLoanId>;
+        pub AvailableLoanIdsByAccountId get(available_loan_ids_by_account_id) : map hasher(opaque_blake2_256) T::AccountId => Vec<P2PLoanId>;
         pub AccountIdsWithLiveLoans get(account_ids_with_loans) : Vec<T::AccountId>;
     }
 }
@@ -134,8 +134,8 @@ decl_error! {
         MinBorrowTerms,
         MinBorrowInterestRate,
         CanNotReserve,
-        MultipleAliveBorrows,
-        BorrowNotAlive,
+        MultipleAvailableBorrows,
+        BorrowNotAvailable,
         TradingPairNotAllowed,
         NotOwnerOfBorrow,
         UnknownBorrowId,
@@ -293,10 +293,10 @@ decl_event!(
         P2PLoan = P2PLoan<<T as generic_asset::Trait>::AssetId, <T as generic_asset::Trait>::Balance, <T as system::Trait>::BlockNumber, <T as system::Trait>::AccountId>,
         P2PBorrow = P2PBorrow<<T as generic_asset::Trait>::AssetId, <T as generic_asset::Trait>::Balance, <T as system::Trait>::BlockNumber, <T as system::Trait>::AccountId>,
     {
-        CheckingAliveBorrows,
-        CheckingAliveLoans,
-        CheckingAliveBorrowsDone,
-        CheckingAliveLoansDone,
+        CheckingAvailableBorrows,
+        CheckingAvailableLoans,
+        CheckingAvailableBorrowsDone,
+        CheckingAvailableLoansDone,
 
         BorrowCreated(P2PBorrow),
         BorrowCanceled(P2PBorrowId),
@@ -319,17 +319,17 @@ decl_event!(
 impl<T: Trait> Module<T> {
     /// immutable for RPC
 
-    /// reverse the alive borrow list
-    pub fn get_alive_borrows(
+    /// reverse the available borrow list
+    pub fn get_available_borrows(
         size: Option<u64>,
         offset: Option<u64>,
     ) -> Vec<P2PBorrow<T::AssetId, T::Balance, T::BlockNumber, T::AccountId>> {
         let offset = offset.unwrap_or(0) as usize;
         let size = size.unwrap_or(10) as usize;
         let mut res = Vec::with_capacity(size);
-        let alive_borrow_ids = AliveBorrowIds::get();
+        let available_borrow_ids = AvailableBorrowIds::get();
 
-        for i in alive_borrow_ids.iter().rev().skip(offset).take(size) {
+        for i in available_borrow_ids.iter().rev().skip(offset).take(size) {
             res.push(<Borrows<T>>::get(i));
         }
 
@@ -354,8 +354,8 @@ impl<T: Trait> Module<T> {
         res
     }
 
-    /// the alive loan list
-    pub fn get_alive_loans(
+    /// the available loan list
+    pub fn get_available_loans(
         size: Option<u64>,
         offset: Option<u64>,
     ) -> Vec<P2PLoan<T::AssetId, T::Balance, T::BlockNumber, T::AccountId>> {
@@ -364,7 +364,7 @@ impl<T: Trait> Module<T> {
         let mut res = Vec::with_capacity(size);
 
         for account_id in <AccountIdsWithLiveLoans<T>>::get() {
-            for id in <AliveLoanIdsByAccountId<T>>::get(&account_id) {
+            for id in <AvailableLoanIdsByAccountId<T>>::get(&account_id) {
                 res.push(<Loans<T>>::get(&id));
             }
         }
@@ -466,8 +466,8 @@ impl<T: Trait> Module<T> {
 
         // different borrow status
         match borrow.status {
-            P2PBorrowStatus::Alive => {
-                // alive borrows will just reserve user's collateral asset
+            P2PBorrowStatus::Available => {
+                // available borrows will just reserve user's collateral asset
                 // so we just move the addition into the reserved and update the lock
                 <generic_asset::Module<T>>::increase_reserved_balance(
                     &borrow.collateral_asset_id,
@@ -619,11 +619,11 @@ impl<T: Trait> Module<T> {
             Self::is_trading_pair_allowed(&trading_pair),
             Error::<T>::TradingPairNotAllowed
         );
-        // ensure one user can only have one borrow alive at a time
+        // ensure one user can only have one borrow available at a time
         if let Some(id) = Self::borrow_ids_by_account_id(&who).last() {
             ensure!(
-                !Self::alive_borrow_ids().contains(id),
-                Error::<T>::MultipleAliveBorrows
+                !Self::available_borrow_ids().contains(id),
+                Error::<T>::MultipleAvailableBorrows
             );
         }
         // ensure essential price info is provided
@@ -672,7 +672,7 @@ impl<T: Trait> Module<T> {
             loan_id: None,
         };
         <Borrows<T>>::insert(&borrow_id, b.clone());
-        AliveBorrowIds::append_or_put(vec![borrow_id.clone()]);
+        AvailableBorrowIds::append_or_put(vec![borrow_id.clone()]);
         <BorrowIdsByAccountId<T>>::append_or_insert(&who, vec![borrow_id.clone()]);
 
         Self::deposit_event(RawEvent::BorrowCreated(b));
@@ -689,13 +689,13 @@ impl<T: Trait> Module<T> {
             Error::<T>::NotOwnerOfBorrow
         );
         ensure!(
-            AliveBorrowIds::get().contains(&borrow_id),
-            Error::<T>::BorrowNotAlive
+            AvailableBorrowIds::get().contains(&borrow_id),
+            Error::<T>::BorrowNotAvailable
         );
 
         let borrow = <Borrows<T>>::get(borrow_id);
         ensure!(
-            borrow.status == P2PBorrowStatus::Alive,
+            borrow.status == P2PBorrowStatus::Available,
             Error::<T>::CanNotCancelBorrow
         );
         <generic_asset::Module<T>>::unreserve(
@@ -705,7 +705,7 @@ impl<T: Trait> Module<T> {
             Some(borrow.lock_id),
         )?;
 
-        AliveBorrowIds::mutate(|v| {
+        AvailableBorrowIds::mutate(|v| {
             *v = v
                 .clone()
                 .into_iter()
@@ -783,7 +783,7 @@ impl<T: Trait> Module<T> {
                 let loan_id = loan.id;
                 <Loans<T>>::insert(loan_id, loan.clone());
                 <LoanIdsByAccountId<T>>::append_or_insert(&loaner, vec![loan_id]);
-                <AliveLoanIdsByAccountId<T>>::append_or_insert(&loaner, vec![loan_id]);
+                <AvailableLoanIdsByAccountId<T>>::append_or_insert(&loaner, vec![loan_id]);
 
                 let lenders = <AccountIdsWithLiveLoans<T>>::get();
                 if !lenders.contains(&loaner) {
@@ -1008,21 +1008,21 @@ impl<T: Trait> Module<T> {
         <Borrows<T>>::mutate(loan.borrow_id, |v| {
             v.status = P2PBorrowStatus::Completed;
         });
-        AliveBorrowIds::mutate(|v| {
+        AvailableBorrowIds::mutate(|v| {
             *v = v
                 .clone()
                 .into_iter()
                 .filter(|id| *id != loan.borrow_id)
                 .collect::<Vec<_>>();
         });
-        <AliveLoanIdsByAccountId<T>>::mutate(&loan.loaner_id, |v| {
+        <AvailableLoanIdsByAccountId<T>>::mutate(&loan.loaner_id, |v| {
             *v = v
                 .clone()
                 .into_iter()
                 .filter(|id| *id != loan.id)
                 .collect::<Vec<_>>();
         });
-        if <AliveLoanIdsByAccountId<T>>::get(&loan.loaner_id).len() == 0 {
+        if <AvailableLoanIdsByAccountId<T>>::get(&loan.loaner_id).len() == 0 {
             <AccountIdsWithLiveLoans<T>>::mutate(|v| {
                 *v = v
                     .clone()
@@ -1041,21 +1041,21 @@ impl<T: Trait> Module<T> {
         <Borrows<T>>::mutate(loan.borrow_id, |v| {
             v.status = P2PBorrowStatus::Liquidated;
         });
-        AliveBorrowIds::mutate(|v| {
+        AvailableBorrowIds::mutate(|v| {
             *v = v
                 .clone()
                 .into_iter()
                 .filter(|id| *id != loan.borrow_id)
                 .collect::<Vec<_>>();
         });
-        <AliveLoanIdsByAccountId<T>>::mutate(&loan.loaner_id, |v| {
+        <AvailableLoanIdsByAccountId<T>>::mutate(&loan.loaner_id, |v| {
             *v = v
                 .clone()
                 .into_iter()
                 .filter(|id| *id != loan.id)
                 .collect::<Vec<_>>();
         });
-        if <AliveLoanIdsByAccountId<T>>::get(&loan.loaner_id).len() == 0 {
+        if <AvailableLoanIdsByAccountId<T>>::get(&loan.loaner_id).len() == 0 {
             <AccountIdsWithLiveLoans<T>>::mutate(|v| {
                 *v = v
                     .clone()
@@ -1079,8 +1079,8 @@ impl<T: Trait> Module<T> {
     ) -> Result<P2PBorrow<T::AssetId, T::Balance, T::BlockNumber, T::AccountId>, DispatchError>
     {
         ensure!(
-            AliveBorrowIds::get().contains(&borrow_id),
-            Error::<T>::BorrowNotAlive
+            AvailableBorrowIds::get().contains(&borrow_id),
+            Error::<T>::BorrowNotAvailable
         );
 
         let block_number = <system::Module<T>>::block_number();
@@ -1089,54 +1089,56 @@ impl<T: Trait> Module<T> {
             <Borrows<T>>::mutate(borrow_id, |v| {
                 v.status = P2PBorrowStatus::Dead;
             });
-            let new_alives = AliveBorrowIds::take()
+            let new_availables = AvailableBorrowIds::take()
                 .into_iter()
                 .filter(|v| *v != borrow_id)
                 .collect::<Vec<_>>();
-            AliveBorrowIds::put(new_alives);
+            AvailableBorrowIds::put(new_availables);
 
-            return Err(Error::<T>::BorrowNotAlive.into());
+            return Err(Error::<T>::BorrowNotAvailable.into());
         }
 
-        if borrow.status != P2PBorrowStatus::Alive {
-            return Err(Error::<T>::BorrowNotAlive.into());
+        if borrow.status != P2PBorrowStatus::Available {
+            return Err(Error::<T>::BorrowNotAvailable.into());
         }
 
         Ok(borrow)
     }
 
-    /// this will go through all borrows currently alive,
+    /// this will go through all borrows currently available,
     /// mark those who have reached the end of lives to be dead.
     pub fn periodic_check_borrows(block_number: T::BlockNumber) {
-        Self::deposit_event(RawEvent::CheckingAliveBorrows);
+        Self::deposit_event(RawEvent::CheckingAvailableBorrows);
 
-        // check alive borrows
-        let mut new_alives: Vec<P2PBorrowId> = Vec::new();
-        AliveBorrowIds::take().into_iter().for_each(|borrow_id| {
-            let borrow = <Borrows<T>>::get(borrow_id);
-            if borrow.dead_after.is_some() && borrow.dead_after.unwrap() <= block_number {
-                <Borrows<T>>::mutate(borrow_id, |v| {
-                    v.status = P2PBorrowStatus::Dead;
-                });
-                Self::deposit_event(RawEvent::BorrowDied(borrow_id.clone()));
-            } else {
-                new_alives.push(borrow_id.clone());
-            }
-        });
-        AliveBorrowIds::put(new_alives);
+        // check available borrows
+        let mut new_availables: Vec<P2PBorrowId> = Vec::new();
+        AvailableBorrowIds::take()
+            .into_iter()
+            .for_each(|borrow_id| {
+                let borrow = <Borrows<T>>::get(borrow_id);
+                if borrow.dead_after.is_some() && borrow.dead_after.unwrap() <= block_number {
+                    <Borrows<T>>::mutate(borrow_id, |v| {
+                        v.status = P2PBorrowStatus::Dead;
+                    });
+                    Self::deposit_event(RawEvent::BorrowDied(borrow_id.clone()));
+                } else {
+                    new_availables.push(borrow_id.clone());
+                }
+            });
+        AvailableBorrowIds::put(new_availables);
 
-        Self::deposit_event(RawEvent::CheckingAliveBorrowsDone);
+        Self::deposit_event(RawEvent::CheckingAvailableBorrowsDone);
     }
 
-    /// this will go through all loans currently alive,
+    /// this will go through all loans currently available,
     /// calculate ltv instantly and mark loans 'ToBeLiquidated' if any whos ltv is below LTVLiquidate.
     pub fn periodic_check_loans(block_number: T::BlockNumber) {
-        Self::deposit_event(RawEvent::CheckingAliveLoans);
+        Self::deposit_event(RawEvent::CheckingAvailableLoans);
 
-        // check alive loans
+        // check available loans
         let account_ids = <AccountIdsWithLiveLoans<T>>::get();
         for account_id in account_ids {
-            let loan_ids = <AliveLoanIdsByAccountId<T>>::get(account_id);
+            let loan_ids = <AvailableLoanIdsByAccountId<T>>::get(account_id);
             for loan_id in loan_ids {
                 let mut loan = <Loans<T>>::get(&loan_id);
                 if loan.status == P2PLoanHealth::Well {
@@ -1163,7 +1165,7 @@ impl<T: Trait> Module<T> {
             }
         }
 
-        Self::deposit_event(RawEvent::CheckingAliveLoansDone);
+        Self::deposit_event(RawEvent::CheckingAvailableLoansDone);
     }
 
     fn fetch_price(asset_id: T::AssetId) -> Option<u64> {

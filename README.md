@@ -121,7 +121,7 @@ This is just for frontend developer
         "_enum": ["JustCollateral", "SellCollateral"]
     },
     "P2PBorrowStatus": {
-        "_enum": ["Alive", "Taken", "Canceled", "Completed", "Dead", "Liquidated"]
+        "_enum": ["Available", "Taken", "Canceled", "Completed", "Dead", "Liquidated"]
     },
     "TradingPair": {
         "collateral": "u32",
@@ -249,7 +249,7 @@ our web wallet.
       ],
       "type": "Vec<P2PBorrow>",
     },
-    "aliveBorrows": {
+    "availableBorrows": {
       "params": [
         {
           "name": "size",
@@ -292,7 +292,7 @@ our web wallet.
       ],
       "type": "Vec<P2PLoanRPC>",
     },
-    "aliveLoans": {
+    "availableLoans": {
       "params": [
         {
           "name": "size",

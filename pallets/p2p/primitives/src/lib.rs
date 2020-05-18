@@ -217,7 +217,7 @@ pub struct P2PBorrow<AssetId, Balance, BlockNumber, AccountId> {
 #[derive(Debug, Encode, Decode, Clone, PartialEq, Eq)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub enum P2PBorrowStatus {
-    Alive,
+    Available,
     Taken,
     Canceled,
     Completed,
@@ -226,7 +226,7 @@ pub enum P2PBorrowStatus {
 }
 impl Default for P2PBorrowStatus {
     fn default() -> Self {
-        Self::Alive
+        Self::Available
     }
 }
 

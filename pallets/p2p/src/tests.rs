@@ -161,7 +161,7 @@ fn multi_borrows_error_works() {
 
         assert_noop!(
             P2PTest::create_borrow(eve, 100000000u128, trading_pair, options),
-            Error::<Test>::MultipleAliveBorrows
+            Error::<Test>::MultipleAvailableBorrows
         );
     });
 }
@@ -306,7 +306,7 @@ fn repay_works() {
             &2_00000000u128,
         ));
         assert_ok!(P2PTest::repay_loan(eve, borrow_id));
-        assert_eq!(P2PTest::alive_borrow_ids().contains(&borrow_id), false);
+        assert_eq!(P2PTest::available_borrow_ids().contains(&borrow_id), false);
         assert_eq!(GenericAssetTest::free_balance(&USDT, &eve), 1_80000000u128);
         assert_eq!(
             GenericAssetTest::free_balance(&USDT, &dave),
@@ -398,7 +398,7 @@ fn liquidate_works() {
                 .filter_map(|ele| {
                     if let MetaEvent::p2p(inner) = ele {
                         match inner {
-                            RawEvent::CheckingAliveLoans => Some(inner),
+                            RawEvent::CheckingAvailableLoans => Some(inner),
                             _ => None,
                         }
                     } else {
@@ -415,7 +415,7 @@ fn liquidate_works() {
                 .filter_map(|ele| {
                     if let MetaEvent::p2p(inner) = ele {
                         match inner {
-                            RawEvent::CheckingAliveLoansDone => Some(inner),
+                            RawEvent::CheckingAvailableLoansDone => Some(inner),
                             _ => None,
                         }
                     } else {
